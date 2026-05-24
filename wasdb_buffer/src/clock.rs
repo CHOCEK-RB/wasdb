@@ -121,3 +121,48 @@ impl ReplacementPolicy for ClockReplacer {
         state.size
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clock_evict() {
+        let clock = ClockReplacer::new(5);
+        clock.record_access(1);
+        clock.record_access(2);
+        clock.record_access(3);
+
+        assert_eq!(clock.size(), 3);
+        
+        // Frames 1, 2, 3 have ref_bits = true.
+        // First eviction will sweep all, set ref_bits to false, 
+        // and then evict the first one it sees (frame 1 because clock hand starts at 0, sweeps 1, 2, 3).
+        assert_eq!(clock.evict(), Some(1));
+        assert_eq!(clock.size(), 2);
+        
+        assert_eq!(clock.evict(), Some(2));
+        assert_eq!(clock.size(), 1);
+        
+        assert_eq!(clock.evict(), Some(3));
+        assert_eq!(clock.size(), 0);
+        
+        assert_eq!(clock.evict(), None);
+    }
+
+    #[test]
+    fn test_clock_pinning() {
+        let clock = ClockReplacer::new(5);
+        clock.record_access(1);
+        clock.record_access(2);
+        
+        clock.set_pin(1, true);
+        
+        // 1 is pinned, so 2 should be evicted even though 1 is earlier in the sweep.
+        assert_eq!(clock.evict(), Some(2));
+        assert_eq!(clock.evict(), None); // 1 is pinned
+        
+        clock.set_pin(1, false);
+        assert_eq!(clock.evict(), Some(1));
+    }
+}

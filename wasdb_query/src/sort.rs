@@ -60,3 +60,32 @@ impl<E: Executor> Executor for ExternalMergeSortExecutor<E> {
         self.child.get_output_schema()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::executors::{SeqScanExecutor, Value};
+    use wasdb_catalog::schema::{Column, TypeId};
+
+    #[test]
+    fn test_external_merge_sort() {
+        let schema = Schema::new(vec![
+            Column::new(String::from("id"), TypeId::Integer, 4),
+        ]);
+
+        let tuples = vec![
+            vec![Value::Integer(10)],
+            vec![Value::Integer(1)],
+            vec![Value::Integer(5)],
+        ];
+
+        let scan = SeqScanExecutor::new(schema, tuples);
+        let mut sort = ExternalMergeSortExecutor::new(Box::new(scan), 0);
+
+        sort.init();
+        assert_eq!(sort.next(), Some(vec![Value::Integer(1)]));
+        assert_eq!(sort.next(), Some(vec![Value::Integer(5)]));
+        assert_eq!(sort.next(), Some(vec![Value::Integer(10)]));
+        assert_eq!(sort.next(), None);
+    }
+}

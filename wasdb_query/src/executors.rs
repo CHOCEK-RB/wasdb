@@ -86,3 +86,37 @@ impl<E: Executor> Executor for FilterExecutor<E> {
         self.child.get_output_schema()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wasdb_catalog::schema::{Column, TypeId};
+
+    #[test]
+    fn test_seq_scan_and_filter() {
+        let schema = Schema::new(vec![
+            Column::new(String::from("id"), TypeId::Integer, 4),
+        ]);
+
+        let tuples = vec![
+            vec![Value::Integer(1)],
+            vec![Value::Integer(5)],
+            vec![Value::Integer(10)],
+        ];
+
+        let scan = SeqScanExecutor::new(schema, tuples);
+        
+        let mut filter = FilterExecutor::new(Box::new(scan), |t| {
+            if let Value::Integer(id) = t[0] {
+                id > 1
+            } else {
+                false
+            }
+        });
+
+        filter.init();
+        assert_eq!(filter.next(), Some(vec![Value::Integer(5)]));
+        assert_eq!(filter.next(), Some(vec![Value::Integer(10)]));
+        assert_eq!(filter.next(), None);
+    }
+}

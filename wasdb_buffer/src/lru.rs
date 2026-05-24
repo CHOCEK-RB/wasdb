@@ -75,3 +75,38 @@ impl ReplacementPolicy for LRUReplacer {
         state.access_queue.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lru_evict() {
+        let lru = LRUReplacer::new(5);
+        lru.record_access(1);
+        lru.record_access(2);
+        lru.record_access(3);
+        lru.record_access(1);
+
+        assert_eq!(lru.size(), 3);
+        assert_eq!(lru.evict(), Some(2));
+        assert_eq!(lru.evict(), Some(3));
+        assert_eq!(lru.evict(), Some(1));
+        assert_eq!(lru.evict(), None);
+    }
+
+    #[test]
+    fn test_lru_pinning() {
+        let lru = LRUReplacer::new(5);
+        lru.record_access(1);
+        lru.record_access(2);
+        
+        lru.set_pin(1, true);
+        
+        assert_eq!(lru.evict(), Some(2));
+        assert_eq!(lru.evict(), None); // 1 is pinned
+        
+        lru.set_pin(1, false);
+        assert_eq!(lru.evict(), Some(1));
+    }
+}
