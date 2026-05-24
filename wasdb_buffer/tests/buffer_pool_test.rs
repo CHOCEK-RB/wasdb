@@ -43,3 +43,29 @@ fn fetch_and_unpin_should_work_with_clock() {
 
     assert!(result.is_ok());
 }
+
+#[test]
+fn fetch_should_track_hit_rate() {
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let disk_manager = BasicDiskManager::<PAGE_SIZE>::new(temp_file.path()).unwrap();
+    let replacer = Box::new(LRUReplacer::new(2));
+    let pool = BufferPoolManager::new(2, disk_manager, replacer);
+
+    let page_id_0 = PageId { file_id: 1, page_num: 0 };
+    
+    // Fetch once - Miss
+    pool.fetch_page(page_id_0).unwrap();
+    pool.unpin_page(page_id_0, false).unwrap();
+    
+    assert_eq!(pool.get_hits(), 0);
+    assert_eq!(pool.get_misses(), 1);
+    assert_eq!(pool.get_hit_rate(), 0.0);
+
+    // Fetch again - Hit
+    pool.fetch_page(page_id_0).unwrap();
+    pool.unpin_page(page_id_0, false).unwrap();
+
+    assert_eq!(pool.get_hits(), 1);
+    assert_eq!(pool.get_misses(), 1);
+    assert_eq!(pool.get_hit_rate(), 0.5);
+}

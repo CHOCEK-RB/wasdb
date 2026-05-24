@@ -730,8 +730,10 @@ dependencies = [
 name = "wasdb_catalog"
 version = "0.1.0"
 dependencies = [
+ "parking_lot",
  "thiserror",
  "wasdb_buffer",
+ "wasdb_page",
  "wasdb_storage",
 ]
 

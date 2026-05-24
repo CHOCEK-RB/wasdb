@@ -128,6 +128,63 @@ impl<E: Executor> Executor for FilterExecutor<E> {
     }
 }
 
+pub struct NestedLoopJoinExecutor<Left: Executor, Right: Executor> {
+    left: Box<Left>,
+    right: Box<Right>,
+    predicate: fn(&Tuple, &Tuple) -> bool,
+    schema: Schema,
+    left_tuple: Option<Tuple>,
+}
+
+impl<Left: Executor, Right: Executor> NestedLoopJoinExecutor<Left, Right> {
+    pub fn new(left: Box<Left>, right: Box<Right>, predicate: fn(&Tuple, &Tuple) -> bool, schema: Schema) -> Self {
+        Self {
+            left,
+            right,
+            predicate,
+            schema,
+            left_tuple: None,
+        }
+    }
+}
+
+impl<Left: Executor, Right: Executor> Executor for NestedLoopJoinExecutor<Left, Right> {
+    fn init(&mut self) {
+        self.left.init();
+        self.right.init();
+        self.left_tuple = self.left.next();
+    }
+
+    fn next(&mut self) -> Option<Tuple> {
+        loop {
+            let l_tuple = match &self.left_tuple {
+                Some(t) => t.clone(),
+                None => return None,
+            };
+
+            if let Some(r_tuple) = self.right.next() {
+                if (self.predicate)(&l_tuple, &r_tuple) {
+                    let mut combined_values = l_tuple.values.clone();
+                    combined_values.extend(r_tuple.values.clone());
+                    return Some(Tuple::new(INVALID_TXN_ID, combined_values));
+                }
+            } else {
+                // Right table exhausted for current left_tuple. Advance left.
+                self.left_tuple = self.left.next();
+                if self.left_tuple.is_none() {
+                    return None;
+                }
+                // Reset right table
+                self.right.init();
+            }
+        }
+    }
+
+    fn get_output_schema(&self) -> &Schema {
+        &self.schema
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

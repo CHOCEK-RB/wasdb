@@ -12,6 +12,7 @@ pub struct PageSlot {
 #[repr(C)]
 pub struct SlottedPageHeader {
     pub log_sequence_number: u64,
+    pub next_page_num: u32,
     pub total_slots: u16,
     pub free_space_lower: u16,
     pub free_space_upper: u16,
@@ -47,6 +48,7 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
     pub fn init(&mut self) {
         let header = SlottedPageHeader {
             log_sequence_number: 0,
+            next_page_num: u32::MAX,
             total_slots: 0,
             free_space_lower: size_of::<SlottedPageHeader>() as u16,
             free_space_upper: PAGE_SIZE as u16,

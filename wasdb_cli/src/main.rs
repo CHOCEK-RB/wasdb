@@ -13,6 +13,8 @@ use ratatui::{
 };
 use std::{error::Error, io};
 
+mod parser;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -87,8 +89,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, db_path: &str) -> io::Result<
                     }
 
                     logs.push(format!("Executing: {}", input));
-                    // Basic mock execution
-                    logs.push(String::from("Success. (0 rows affected)"));
+                    
+                    let mut p = parser::Parser::new(&input);
+                    match p.parse() {
+                        Ok(ast) => logs.push(format!("Parsed AST: {:?}", ast)),
+                        Err(e) => logs.push(format!("Parse Error: {}", e)),
+                    }
 
                     input.clear();
                 }

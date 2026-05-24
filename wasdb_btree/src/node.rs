@@ -12,7 +12,7 @@ pub const INVALID_PAGE_ID: PageId = PageId {
 };
 
 pub type KeyType = i32;
-pub type ValueType = u64; // Typically a Record ID (PageId + SlotIdx)
+pub type ValueType = wasdb_storage::CTID;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -61,7 +61,7 @@ impl LeafNode {
                 next_page_id: INVALID_PAGE_ID,
             },
             keys: [0; MAX_KEYS],
-            values: [0; MAX_KEYS],
+            values: [wasdb_storage::CTID::default(); MAX_KEYS],
         }
     }
 

@@ -11,6 +11,12 @@ pub struct PageId {
     pub page_num: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct CTID {
+    pub page_id: PageId,
+    pub slot_idx: u16,
+}
+
 #[derive(Error, Debug)]
 pub enum StorageError {
     #[error("IO error: {0}")]

@@ -13,6 +13,8 @@ pub struct Column {
     pub type_id: TypeId,
     pub length: u32,
     pub offset: u32,
+    pub is_primary_key: bool,
+    pub is_not_null: bool,
 }
 
 impl Column {
@@ -22,7 +24,22 @@ impl Column {
             type_id,
             length,
             offset: 0, // Calculated by schema
+            is_primary_key: false,
+            is_not_null: false,
         }
+    }
+
+    pub fn with_primary_key(mut self, is_pk: bool) -> Self {
+        self.is_primary_key = is_pk;
+        if is_pk {
+            self.is_not_null = true;
+        }
+        self
+    }
+
+    pub fn with_not_null(mut self, not_null: bool) -> Self {
+        self.is_not_null = not_null;
+        self
     }
 }
 

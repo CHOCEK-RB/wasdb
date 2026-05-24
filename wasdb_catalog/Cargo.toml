@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 thiserror.workspace = true
+parking_lot.workspace = true
 wasdb_storage = { path = "../wasdb_storage" }
 wasdb_buffer = { path = "../wasdb_buffer" }
+wasdb_page = { path = "../wasdb_page" }

@@ -17,13 +17,18 @@ fn end_to_end_query_execution_should_succeed() {
     let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
 
     let btree = BTreeIndex::new(&buffer_pool, None);
-    btree.insert(10, 100).unwrap();
-    btree.insert(20, 200).unwrap();
-    btree.insert(5, 50).unwrap();
+    let mut ctid1 = wasdb_storage::CTID::default(); ctid1.slot_idx = 100;
+    btree.insert(10, ctid1).unwrap();
+    
+    let mut ctid2 = wasdb_storage::CTID::default(); ctid2.slot_idx = 200;
+    btree.insert(20, ctid2).unwrap();
+    
+    let mut ctid3 = wasdb_storage::CTID::default(); ctid3.slot_idx = 50;
+    btree.insert(5, ctid3).unwrap();
 
-    assert_eq!(btree.search(10).unwrap(), 100);
-    assert_eq!(btree.search(20).unwrap(), 200);
-    assert_eq!(btree.search(5).unwrap(), 50);
+    assert_eq!(btree.search(10).unwrap(), ctid1);
+    assert_eq!(btree.search(20).unwrap(), ctid2);
+    assert_eq!(btree.search(5).unwrap(), ctid3);
     assert!(btree.search(99).is_err());
 
     let schema = Schema::new(vec![

@@ -18,7 +18,8 @@ impl Catalog {
         }
     }
 
-    /// Creates a new table entry in the catalog.
+    /// Creates a new table entry in the catalog, and automatically creates
+    /// indexes for primary keys.
     pub fn create_table(
         &mut self,
         table_name: String,
@@ -29,10 +30,24 @@ impl Catalog {
             return Err(CatalogError::TableExists(table_name));
         }
 
+        let mut indexes = Vec::new();
+        for (i, col) in schema.columns.iter().enumerate() {
+            if col.is_primary_key {
+                indexes.push(crate::table::IndexMetadata {
+                    index_name: format!("{}_pk", table_name),
+                    table_name: table_name.clone(),
+                    column_index: i,
+                    root_page_id: PageId { file_id: 0, page_num: 0 }, // Placeholder, in real db we would allocate a page for the BTree
+                    is_unique: true,
+                });
+            }
+        }
+
         let meta = TableMetadata {
             table_name: table_name.clone(),
             schema,
             root_page_id,
+            indexes,
         };
 
         self.tables.insert(table_name, meta);

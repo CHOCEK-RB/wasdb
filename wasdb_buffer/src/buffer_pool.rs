@@ -3,7 +3,7 @@ use crate::replacer::ReplacementPolicy;
 use crate::BufferError;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use wasdb_page::SlottedPage;
 use wasdb_storage::{DiskManager, PageId};
@@ -24,6 +24,10 @@ pub struct BufferPoolManager<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> 
     replacer: Box<dyn ReplacementPolicy>,
     /// Optional LogManager for enforcing WAL flush rules.
     log_manager: Option<Arc<LogManager>>,
+    
+    // Metrics
+    hits: AtomicUsize,
+    misses: AtomicUsize,
 }
 
 impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_SIZE, D> {
@@ -52,7 +56,27 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
             disk_manager,
             replacer,
             log_manager,
+            hits: AtomicUsize::new(0),
+            misses: AtomicUsize::new(0),
         }
+    }
+
+    pub fn get_hit_rate(&self) -> f64 {
+        let h = self.hits.load(Ordering::SeqCst) as f64;
+        let m = self.misses.load(Ordering::SeqCst) as f64;
+        if h + m == 0.0 {
+            0.0
+        } else {
+            h / (h + m)
+        }
+    }
+
+    pub fn get_hits(&self) -> usize {
+        self.hits.load(Ordering::SeqCst)
+    }
+
+    pub fn get_misses(&self) -> usize {
+        self.misses.load(Ordering::SeqCst)
     }
 
     fn flush_wal(&self, page: &SlottedPage<PAGE_SIZE>) {
@@ -84,12 +108,15 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
         let mut page_table = self.page_table.lock();
 
         if let Some(&frame_id) = page_table.get(&page_id) {
+            self.hits.fetch_add(1, Ordering::SeqCst);
             let desc = &self.descriptors[frame_id];
             desc.pin();
             self.replacer.set_pin(frame_id, true);
             self.replacer.record_access(frame_id);
             return Ok(frame_id);
         }
+
+        self.misses.fetch_add(1, Ordering::SeqCst);
 
         // Cache miss. Need to find a free frame.
         let frame_id = self.find_victim_frame()?;
