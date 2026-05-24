@@ -1,8 +1,8 @@
+use parking_lot::Mutex;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
-use parking_lot::Mutex;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -62,10 +62,10 @@ impl<const PAGE_SIZE: usize> DiskManager<PAGE_SIZE> for BasicDiskManager<PAGE_SI
     fn read_page(&self, page_id: PageId, data: &mut [u8; PAGE_SIZE]) -> Result<(), StorageError> {
         let mut file = self.file_handle.fd.lock();
         let offset = (page_id.page_num as u64) * (PAGE_SIZE as u64);
-        
+
         let file_len = file.metadata()?.len();
         if offset >= file_len {
-            // When reading a newly allocated page that hasn't been written to, 
+            // When reading a newly allocated page that hasn't been written to,
             // the file might not be extended yet. We can just zero out the buffer.
             data.fill(0);
             return Ok(());
@@ -80,7 +80,7 @@ impl<const PAGE_SIZE: usize> DiskManager<PAGE_SIZE> for BasicDiskManager<PAGE_SI
             // zero out the rest
             data[bytes_read..].fill(0);
         }
-        
+
         Ok(())
     }
 
@@ -118,9 +118,9 @@ mod tests {
     fn test_read_write_page() {
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.path().to_path_buf();
-        
+
         let disk_manager = BasicDiskManager::<TEST_PAGE_SIZE>::new(&path).unwrap();
-        
+
         let page_id = disk_manager.allocate_page(0);
         assert_eq!(page_id.page_num, 0);
 

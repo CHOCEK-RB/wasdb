@@ -1,11 +1,11 @@
-use wasdb_storage::BasicDiskManager;
+use tempfile::NamedTempFile;
+use wasdb_btree::tree::BTreeIndex;
 use wasdb_buffer::buffer_pool::BufferPoolManager;
 use wasdb_buffer::lru::LRUReplacer;
-use wasdb_btree::tree::BTreeIndex;
-use wasdb_query::executors::{Executor, SeqScanExecutor, FilterExecutor, Value};
+use wasdb_catalog::schema::{Column, Schema, TypeId};
+use wasdb_query::executors::{Executor, FilterExecutor, SeqScanExecutor, Value};
 use wasdb_query::sort::ExternalMergeSortExecutor;
-use wasdb_catalog::schema::{Schema, Column, TypeId};
-use tempfile::NamedTempFile;
+use wasdb_storage::BasicDiskManager;
 
 const PAGE_SIZE: usize = 8192;
 
@@ -44,7 +44,7 @@ fn test_full_system_integration() {
     ];
 
     let scan = SeqScanExecutor::new(schema.clone(), tuples);
-    
+
     // 4. Test Filter Executor
     // Filter rows where id > 10
     let mut filter = FilterExecutor::new(Box::new(scan), |tuple| {
@@ -60,7 +60,7 @@ fn test_full_system_integration() {
     while let Some(tuple) = filter.next() {
         filtered_tuples.push(tuple);
     }
-    
+
     assert_eq!(filtered_tuples.len(), 2);
     assert_eq!(filtered_tuples[0][0], Value::Integer(20));
     assert_eq!(filtered_tuples[1][0], Value::Integer(30));
@@ -74,7 +74,7 @@ fn test_full_system_integration() {
         vec![Value::Integer(10), Value::Integer(100)],
     ];
     let scan = SeqScanExecutor::new(schema.clone(), tuples);
-    
+
     // Sort by id (index 0)
     let mut sort = ExternalMergeSortExecutor::new(Box::new(scan), 0);
     sort.init();

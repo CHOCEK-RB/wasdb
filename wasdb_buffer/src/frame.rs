@@ -1,6 +1,6 @@
-use wasdb_storage::PageId;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use parking_lot::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use wasdb_storage::PageId;
 
 /// Represents the metadata for a single frame of memory in the buffer pool.
 pub struct FrameDescriptor {

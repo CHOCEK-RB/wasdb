@@ -29,7 +29,9 @@ impl<const PAGE_SIZE: usize> Default for SlottedPage<PAGE_SIZE> {
 
 impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
     pub fn new() -> Self {
-        let mut page = Self { data: Box::new([0; PAGE_SIZE]) };
+        let mut page = Self {
+            data: Box::new([0; PAGE_SIZE]),
+        };
         page.init();
         page
     }
@@ -115,7 +117,7 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         header_copy.total_slots += 1;
         header_copy.free_space_upper = new_offset;
         header_copy.free_space_lower += size_of::<PageSlot>() as u16;
-        
+
         unsafe {
             let src = &header_copy as *const _ as *const u8;
             let dst = self.data.as_mut_ptr();
@@ -140,7 +142,7 @@ mod tests {
     #[test]
     fn test_insert_and_get() {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
-        
+
         let record1 = b"Hello, World!";
         let slot1 = page.insert_record(record1).unwrap();
         assert_eq!(slot1, 0);
@@ -151,7 +153,7 @@ mod tests {
 
         assert_eq!(page.get_record(slot1).unwrap(), record1);
         assert_eq!(page.get_record(slot2).unwrap(), record2);
-        
+
         let header = page.header();
         assert_eq!(header.total_slots, 2);
     }

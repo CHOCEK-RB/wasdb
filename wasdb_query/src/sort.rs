@@ -31,7 +31,9 @@ impl<E: Executor> ExternalMergeSortExecutor<E> {
 
         let idx = self.sort_idx;
         self.sorted_tuples.sort_by(|a, b| {
-            a[idx].partial_cmp(&b[idx]).unwrap_or(std::cmp::Ordering::Equal)
+            a[idx]
+                .partial_cmp(&b[idx])
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
 }

@@ -1,7 +1,9 @@
-use crate::node::{BTreePageHeader, InternalNode, KeyType, LeafNode, NodeType, ValueType, INVALID_PAGE_ID};
+use crate::node::{
+    BTreePageHeader, InternalNode, KeyType, LeafNode, NodeType, ValueType, INVALID_PAGE_ID,
+};
+use thiserror::Error;
 use wasdb_buffer::buffer_pool::BufferPoolManager;
 use wasdb_storage::{DiskManager, PageId};
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum BTreeError {
@@ -21,7 +23,10 @@ pub struct BTreeIndex<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> {
 }
 
 impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_SIZE, D> {
-    pub fn new(buffer_pool: &'a BufferPoolManager<PAGE_SIZE, D>, root_page_id: Option<PageId>) -> Self {
+    pub fn new(
+        buffer_pool: &'a BufferPoolManager<PAGE_SIZE, D>,
+        root_page_id: Option<PageId>,
+    ) -> Self {
         Self {
             buffer_pool,
             root_page_id: parking_lot::RwLock::new(root_page_id),
@@ -36,10 +41,11 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
             let (frame_id, root_page_id) = self.buffer_pool.new_page(0)?;
             let mut page_data = self.buffer_pool.write_page(frame_id);
             let leaf = unsafe { &mut *(page_data.data.as_mut_ptr() as *mut LeafNode) };
-            
+
             leaf.header.node_type = NodeType::Leaf as u8;
             leaf.header.num_keys = 0;
-            let max_keys = (PAGE_SIZE - std::mem::size_of::<BTreePageHeader>()) / (std::mem::size_of::<KeyType>() + std::mem::size_of::<ValueType>());
+            let max_keys = (PAGE_SIZE - std::mem::size_of::<BTreePageHeader>())
+                / (std::mem::size_of::<KeyType>() + std::mem::size_of::<ValueType>());
             leaf.header.max_keys = max_keys as u16;
             leaf.header.parent_page_id = INVALID_PAGE_ID;
             leaf.header.next_page_id = INVALID_PAGE_ID;
@@ -58,13 +64,13 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
 
         // Find leaf
         let (leaf_frame, leaf_page_id) = self.find_leaf_page(key)?.unwrap();
-        
+
         // Pin leaf for writing
         let mut page_data = self.buffer_pool.write_page(leaf_frame);
         let leaf = unsafe { &mut *(page_data.data.as_mut_ptr() as *mut LeafNode) };
 
         let num_keys = leaf.header.num_keys as usize;
-        
+
         // Check duplicate
         if leaf.keys[..num_keys].binary_search(&key).is_ok() {
             drop(page_data);
@@ -82,7 +88,7 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
                     break;
                 }
             }
-            
+
             // Shift
             for i in (insert_idx..num_keys).rev() {
                 leaf.keys[i + 1] = leaf.keys[i];
@@ -131,7 +137,7 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
                 }
             }
             let next_page_id = internal_node.children[child_idx];
-            
+
             drop(page_data);
             self.buffer_pool.unpin_page(curr_page_id, false)?;
             curr_page_id = next_page_id;
@@ -139,15 +145,15 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
     }
 
     pub fn search(&self, key: KeyType) -> Result<ValueType, BTreeError> {
-        let (leaf_frame_id, curr_page_id) = self.find_leaf_page(key)?
-            .ok_or(BTreeError::KeyNotFound)?;
+        let (leaf_frame_id, curr_page_id) =
+            self.find_leaf_page(key)?.ok_or(BTreeError::KeyNotFound)?;
 
         let page_data = self.buffer_pool.read_page(leaf_frame_id);
         let leaf_node = unsafe { &*(page_data.data.as_ptr() as *const LeafNode) };
-        
+
         let mut found_val = None;
         let num_keys = leaf_node.header.num_keys as usize;
-        
+
         if let Ok(idx) = leaf_node.keys[..num_keys].binary_search(&key) {
             found_val = Some(leaf_node.values[idx]);
         }

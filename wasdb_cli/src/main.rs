@@ -2,14 +2,14 @@ use clap::Parser;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Terminal,
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph},
-    Terminal,
 };
 use std::{error::Error, io};
 
@@ -59,13 +59,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, db_path: &str) -> io::Result<
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .margin(1)
-                .constraints(
-                    [
-                        Constraint::Length(3),
-                        Constraint::Min(1),
-                    ]
-                    .as_ref(),
-                )
+                .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
                 .split(f.size());
 
             let input_widget = Paragraph::new(format!("> {}", input))
@@ -91,11 +85,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, db_path: &str) -> io::Result<
                     if input.trim() == "exit" || input.trim() == "quit" {
                         return Ok(());
                     }
-                    
+
                     logs.push(format!("Executing: {}", input));
                     // Basic mock execution
                     logs.push(String::from("Success. (0 rows affected)"));
-                    
+
                     input.clear();
                 }
                 KeyCode::Esc => {

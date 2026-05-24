@@ -64,10 +64,7 @@ pub struct FilterExecutor<Child: Executor> {
 
 impl<E: Executor> FilterExecutor<E> {
     pub fn new(child: Box<E>, predicate: fn(&Tuple) -> bool) -> Self {
-        Self {
-            child,
-            predicate,
-        }
+        Self { child, predicate }
     }
 }
 

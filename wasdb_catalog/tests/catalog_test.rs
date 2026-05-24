@@ -5,16 +5,21 @@ use wasdb_storage::PageId;
 #[test]
 fn test_catalog_create_and_get() {
     let mut catalog = Catalog::new();
-    
+
     let schema = Schema::new(vec![
         Column::new("id".to_string(), TypeId::Integer, 4),
         Column::new("name".to_string(), TypeId::Varchar, 32),
     ]);
-    
-    let root_page_id = PageId { file_id: 0, page_num: 1 };
-    
-    catalog.create_table("users".to_string(), schema, root_page_id).unwrap();
-    
+
+    let root_page_id = PageId {
+        file_id: 0,
+        page_num: 1,
+    };
+
+    catalog
+        .create_table("users".to_string(), schema, root_page_id)
+        .unwrap();
+
     let table = catalog.get_table("users").unwrap();
     assert_eq!(table.table_name, "users");
     assert_eq!(table.schema.columns.len(), 2);

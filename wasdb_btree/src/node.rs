@@ -1,12 +1,15 @@
-use wasdb_storage::PageId;
 use thiserror::Error;
+use wasdb_storage::PageId;
 
 #[derive(Error, Debug)]
 pub enum BTreeError {
     #[error("Node is full")]
     NodeFull,
 }
-pub const INVALID_PAGE_ID: PageId = PageId { file_id: u32::MAX, page_num: u32::MAX };
+pub const INVALID_PAGE_ID: PageId = PageId {
+    file_id: u32::MAX,
+    page_num: u32::MAX,
+};
 
 pub type KeyType = i32;
 pub type ValueType = u64; // Typically a Record ID (PageId + SlotIdx)
@@ -29,7 +32,7 @@ pub struct BTreePageHeader {
 }
 
 // 8KB page size
-pub const MAX_KEYS: usize = 340; 
+pub const MAX_KEYS: usize = 340;
 
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -66,7 +69,7 @@ impl LeafNode {
         if self.header.num_keys >= self.header.max_keys {
             return Err(BTreeError::NodeFull); // Node is full
         }
-        
+
         let num_keys = self.header.num_keys as usize;
         let mut idx = 0;
         while idx < num_keys && self.keys[idx] < key {

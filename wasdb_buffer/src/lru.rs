@@ -33,12 +33,12 @@ impl LRUReplacer {
 impl ReplacementPolicy for LRUReplacer {
     fn record_access(&self, frame_id: usize) {
         let mut state = self.inner.lock();
-        
+
         // Remove existing entry if present to update its position.
         if let Some(pos) = state.access_queue.iter().position(|&id| id == frame_id) {
             state.access_queue.remove(pos);
         }
-        
+
         // Append to the back (most recently used).
         state.access_queue.push(frame_id);
     }
@@ -52,7 +52,7 @@ impl ReplacementPolicy for LRUReplacer {
 
     fn evict(&self) -> Option<usize> {
         let mut state = self.inner.lock();
-        
+
         // Find the first unpinned frame starting from the front (least recently used).
         for (i, &frame_id) in state.access_queue.iter().enumerate() {
             if !state.is_pinned[frame_id] {

@@ -71,7 +71,7 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
         // Cache miss. Need to find a free frame.
         let frame_id = self.find_victim_frame()?;
         let desc = &self.descriptors[frame_id];
-        
+
         // If the frame has a dirty page, flush it.
         if desc.is_dirty.load(Ordering::SeqCst) {
             let page_id_guard = desc.page_id.lock();

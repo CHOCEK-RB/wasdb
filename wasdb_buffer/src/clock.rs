@@ -2,7 +2,7 @@ use crate::replacer::ReplacementPolicy;
 use parking_lot::Mutex;
 
 /// ClockReplacer implements the Clock page replacement algorithm.
-/// It visualizes frames as a circular buffer (a clock). 
+/// It visualizes frames as a circular buffer (a clock).
 /// Each frame has a reference bit. When checking for eviction, it sweeps the clock hand:
 /// If the reference bit is 1, it resets it to 0. If 0 and the frame is unpinned, it evicts it.
 pub struct ClockReplacer {
@@ -69,10 +69,10 @@ impl ReplacementPolicy for ClockReplacer {
         }
 
         let start_hand = state.clock_hand;
-        
+
         loop {
             let current = state.clock_hand;
-            
+
             if state.is_active[current] && !state.is_pinned[current] {
                 if state.ref_bits[current] {
                     // Reset reference bit and move on
@@ -87,14 +87,18 @@ impl ReplacementPolicy for ClockReplacer {
             }
 
             state.clock_hand = (current + 1) % self.capacity;
-            
+
             // If we've done a full circle and found nothing eligible, stop to avoid infinite loop.
             if state.clock_hand == start_hand {
                 // It means all active frames are pinned or we just flipped all ref bits to 0.
                 // We should loop one more time if we just flipped bits, but to be safe and avoid
                 // infinite loops if all are pinned, we count pinned frames.
-                let unpinned_count = state.is_active.iter().zip(state.is_pinned.iter())
-                    .filter(|(&active, &pinned)| active && !pinned).count();
+                let unpinned_count = state
+                    .is_active
+                    .iter()
+                    .zip(state.is_pinned.iter())
+                    .filter(|(&active, &pinned)| active && !pinned)
+                    .count();
                 if unpinned_count == 0 {
                     return None;
                 }
