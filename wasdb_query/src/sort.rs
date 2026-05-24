@@ -1,10 +1,9 @@
 use crate::executors::{Executor, Tuple};
-use wasdb_catalog::schema::Schema;
-use std::fs::File;
-use std::io::{Read, Write, Seek, SeekFrom};
-use tempfile::NamedTempFile;
-use std::collections::BinaryHeap;
 use std::cmp::Ordering;
+use std::collections::BinaryHeap;
+use std::io::{Read, Seek, SeekFrom, Write};
+use tempfile::NamedTempFile;
+use wasdb_catalog::schema::Schema;
 
 // We need a wrapper to hold tuples in the BinaryHeap to implement min-heap by the sort key
 struct HeapEntry {
@@ -61,13 +60,15 @@ impl ExternalMergeSortExecutor {
     }
 
     fn deserialize_tuple(buf: &str) -> Option<Tuple> {
-        if buf.is_empty() { return None; }
+        if buf.is_empty() {
+            return None;
+        }
         serde_json::from_str(buf).ok()
     }
 
     fn perform_external_merge_sort(&mut self) {
         let mut chunk = Vec::new();
-        
+
         // Phase 1: Read, Sort, Write
         while let Some(tuple) = self.child.next() {
             chunk.push(tuple);
@@ -143,18 +144,17 @@ impl Executor for ExternalMergeSortExecutor {
     fn next(&mut self) -> Option<Tuple> {
         if let Some(entry) = self.heap.pop() {
             let tuple = entry.tuple;
-            
-            // Fetch next from the same run
-            if let Some(mut run_file) = self.runs.get_mut(entry.run_idx).map(|f| f.as_file_mut()) {
-                if let Some(next_tuple) = Self::read_next_tuple(run_file) {
-                    self.heap.push(HeapEntry {
-                        tuple: next_tuple,
-                        run_idx: entry.run_idx,
-                        sort_idx: self.sort_idx,
-                    });
-                }
+
+            if let Some(run_file) = self.runs.get_mut(entry.run_idx).map(|f| f.as_file_mut())
+                && let Some(next_tuple) = Self::read_next_tuple(run_file)
+            {
+                self.heap.push(HeapEntry {
+                    tuple: next_tuple,
+                    run_idx: entry.run_idx,
+                    sort_idx: self.sort_idx,
+                });
             }
-            
+
             Some(tuple)
         } else {
             None
