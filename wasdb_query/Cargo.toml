@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 [dependencies]
 wasdb_catalog = { path = "../wasdb_catalog" }
+wasdb_tx = { version = "0.1.0", path = "../wasdb_tx" }
 
 [dev-dependencies]
 tempfile = "3.27.0"

@@ -4,8 +4,10 @@ use crate::BufferError;
 use parking_lot::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use wasdb_page::SlottedPage;
 use wasdb_storage::{DiskManager, PageId};
+use wasdb_wal::LogManager;
 
 /// BufferPoolManager orchestrates the fetching and flushing of pages to disk.
 pub struct BufferPoolManager<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> {
@@ -20,10 +22,21 @@ pub struct BufferPoolManager<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> 
     disk_manager: D,
     /// Policy for evicting pages (e.g. LRU, Clock).
     replacer: Box<dyn ReplacementPolicy>,
+    /// Optional LogManager for enforcing WAL flush rules.
+    log_manager: Option<Arc<LogManager>>,
 }
 
 impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_SIZE, D> {
     pub fn new(pool_size: usize, disk_manager: D, replacer: Box<dyn ReplacementPolicy>) -> Self {
+        Self::with_log_manager(pool_size, disk_manager, replacer, None)
+    }
+
+    pub fn with_log_manager(
+        pool_size: usize,
+        disk_manager: D,
+        replacer: Box<dyn ReplacementPolicy>,
+        log_manager: Option<Arc<LogManager>>,
+    ) -> Self {
         let mut frames = Vec::with_capacity(pool_size);
         let mut descriptors = Vec::with_capacity(pool_size);
         for _ in 0..pool_size {
@@ -38,6 +51,16 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
             page_table: Mutex::new(HashMap::with_capacity(pool_size)),
             disk_manager,
             replacer,
+            log_manager,
+        }
+    }
+
+    fn flush_wal(&self, page: &SlottedPage<PAGE_SIZE>) {
+        if let Some(lm) = &self.log_manager {
+            let lsn = page.header().log_sequence_number;
+            if lm.get_flushed_lsn() < lsn {
+                let _ = lm.flush();
+            }
         }
     }
 
@@ -77,6 +100,7 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
             let page_id_guard = desc.page_id.lock();
             if let Some(old_page_id) = *page_id_guard {
                 let page_data = self.frames[frame_id].read();
+                self.flush_wal(&*page_data);
                 self.disk_manager.write_page(old_page_id, &page_data.data)?;
                 desc.is_dirty.store(false, Ordering::SeqCst);
             }
@@ -130,6 +154,7 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
         if let Some(&frame_id) = page_table.get(&page_id) {
             let desc = &self.descriptors[frame_id];
             let page_data = self.frames[frame_id].read();
+            self.flush_wal(&*page_data);
             self.disk_manager.write_page(page_id, &page_data.data)?;
             desc.is_dirty.store(false, Ordering::SeqCst);
             Ok(())
@@ -145,6 +170,7 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
             if desc.is_dirty.load(Ordering::SeqCst) {
                 if let Some(page_id) = *desc.page_id.lock() {
                     let page_data = self.frames[frame_id].read();
+                    self.flush_wal(&*page_data);
                     self.disk_manager.write_page(page_id, &page_data.data)?;
                     desc.is_dirty.store(false, Ordering::SeqCst);
                 }

@@ -723,6 +723,7 @@ dependencies = [
  "thiserror",
  "wasdb_page",
  "wasdb_storage",
+ "wasdb_wal",
 ]
 
 [[package]]
@@ -754,6 +755,7 @@ version = "0.1.0"
 dependencies = [
  "thiserror",
  "wasdb_storage",
+ "wasdb_tx",
 ]
 
 [[package]]
@@ -765,6 +767,7 @@ dependencies = [
  "wasdb_buffer",
  "wasdb_catalog",
  "wasdb_storage",
+ "wasdb_tx",
 ]
 
 [[package]]
@@ -774,6 +777,25 @@ dependencies = [
  "parking_lot",
  "tempfile",
  "thiserror",
+]
+
+[[package]]
+name = "wasdb_tx"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
+ "thiserror",
+]
+
+[[package]]
+name = "wasdb_wal"
+version = "0.1.0"
+dependencies = [
+ "parking_lot",
+ "tempfile",
+ "thiserror",
+ "wasdb_storage",
+ "wasdb_tx",
 ]
 
 [[package]]

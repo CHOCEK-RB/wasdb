@@ -8,7 +8,7 @@ members = [
     "wasdb_btree",
     "wasdb_query",
     "wasdb_cli"
-]
+, "wasdb_tx", "wasdb_wal"]
 
 [workspace.dependencies]
 thiserror = "1.0"

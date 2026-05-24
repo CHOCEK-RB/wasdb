@@ -32,15 +32,15 @@ fn end_to_end_query_execution_should_succeed() {
     ]);
 
     let tuples = vec![
-        vec![Value::Integer(10), Value::Integer(100)],
-        vec![Value::Integer(20), Value::Integer(200)],
-        vec![Value::Integer(5), Value::Integer(50)],
-        vec![Value::Integer(30), Value::Integer(300)],
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(10), Value::Integer(100)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(20), Value::Integer(200)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(5), Value::Integer(50)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(30), Value::Integer(300)]),
     ];
     let scan = SeqScanExecutor::new(schema.clone(), tuples);
 
     let mut filter = FilterExecutor::new(Box::new(scan), |tuple| {
-        if let Value::Integer(id) = tuple[0] {
+        if let Value::Integer(id) = tuple.values[0] {
             id > 10
         } else {
             false
@@ -54,14 +54,14 @@ fn end_to_end_query_execution_should_succeed() {
     }
 
     assert_eq!(filtered_tuples.len(), 2);
-    assert_eq!(filtered_tuples[0][0], Value::Integer(20));
-    assert_eq!(filtered_tuples[1][0], Value::Integer(30));
+    assert_eq!(filtered_tuples[0].values[0], Value::Integer(20));
+    assert_eq!(filtered_tuples[1].values[0], Value::Integer(30));
 
     let tuples_for_sort = vec![
-        vec![Value::Integer(20), Value::Integer(200)],
-        vec![Value::Integer(5), Value::Integer(50)],
-        vec![Value::Integer(30), Value::Integer(300)],
-        vec![Value::Integer(10), Value::Integer(100)],
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(20), Value::Integer(200)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(5), Value::Integer(50)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(30), Value::Integer(300)]),
+        wasdb_query::executors::Tuple::new(1, vec![Value::Integer(10), Value::Integer(100)]),
     ];
     let scan_for_sort = SeqScanExecutor::new(schema.clone(), tuples_for_sort);
     let mut sort = ExternalMergeSortExecutor::new(Box::new(scan_for_sort), 0);
@@ -73,8 +73,8 @@ fn end_to_end_query_execution_should_succeed() {
     }
 
     assert_eq!(sorted_tuples.len(), 4);
-    assert_eq!(sorted_tuples[0][0], Value::Integer(5));
-    assert_eq!(sorted_tuples[1][0], Value::Integer(10));
-    assert_eq!(sorted_tuples[2][0], Value::Integer(20));
-    assert_eq!(sorted_tuples[3][0], Value::Integer(30));
+    assert_eq!(sorted_tuples[0].values[0], Value::Integer(5));
+    assert_eq!(sorted_tuples[1].values[0], Value::Integer(10));
+    assert_eq!(sorted_tuples[2].values[0], Value::Integer(20));
+    assert_eq!(sorted_tuples[3].values[0], Value::Integer(30));
 }

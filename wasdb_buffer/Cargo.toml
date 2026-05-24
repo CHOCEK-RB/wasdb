@@ -8,6 +8,7 @@ thiserror.workspace = true
 parking_lot.workspace = true
 wasdb_storage = { path = "../wasdb_storage" }
 wasdb_page = { path = "../wasdb_page" }
+wasdb_wal = { version = "0.1.0", path = "../wasdb_wal" }
 
 [dev-dependencies]
 tempfile = "3.27.0"

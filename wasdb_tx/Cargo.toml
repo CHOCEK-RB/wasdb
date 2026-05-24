@@ -1,0 +1,8 @@
+[package]
+name = "wasdb_tx"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+parking_lot.workspace = true
+thiserror.workspace = true

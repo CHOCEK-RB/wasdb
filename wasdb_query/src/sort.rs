@@ -31,8 +31,8 @@ impl<E: Executor> ExternalMergeSortExecutor<E> {
 
         let idx = self.sort_idx;
         self.sorted_tuples.sort_by(|a, b| {
-            a[idx]
-                .partial_cmp(&b[idx])
+            a.values[idx]
+                .partial_cmp(&b.values[idx])
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
     }
@@ -69,20 +69,23 @@ mod tests {
 
     #[test]
     fn next_should_return_tuples_in_sorted_order() {
+        // Arrange
         let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
         let tuples = vec![
-            vec![Value::Integer(10)],
-            vec![Value::Integer(1)],
-            vec![Value::Integer(5)],
+            Tuple::new(1, vec![Value::Integer(10)]),
+            Tuple::new(1, vec![Value::Integer(1)]),
+            Tuple::new(1, vec![Value::Integer(5)]),
         ];
         let scan = SeqScanExecutor::new(schema, tuples);
         let mut sort = ExternalMergeSortExecutor::new(Box::new(scan), 0);
 
+        // Act
         sort.init();
 
-        assert_eq!(sort.next(), Some(vec![Value::Integer(1)]));
-        assert_eq!(sort.next(), Some(vec![Value::Integer(5)]));
-        assert_eq!(sort.next(), Some(vec![Value::Integer(10)]));
+        // Assert
+        assert_eq!(sort.next().unwrap().values[0], Value::Integer(1));
+        assert_eq!(sort.next().unwrap().values[0], Value::Integer(5));
+        assert_eq!(sort.next().unwrap().values[0], Value::Integer(10));
         assert_eq!(sort.next(), None);
     }
 }

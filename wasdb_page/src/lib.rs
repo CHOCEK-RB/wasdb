@@ -1,3 +1,4 @@
+use wasdb_tx::{TransactionId, INVALID_TXN_ID};
 use std::mem::size_of;
 
 #[derive(Debug, Clone, Copy)]
@@ -15,6 +16,13 @@ pub struct SlottedPageHeader {
     pub free_space_lower: u16,
     pub free_space_upper: u16,
     pub page_flags: u16,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct TupleHeader {
+    pub xmin: TransactionId,
+    pub xmax: TransactionId,
 }
 
 pub struct SlottedPage<const PAGE_SIZE: usize> {
@@ -82,7 +90,7 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         }
     }
 
-    pub fn get_record(&self, slot_idx: usize) -> Option<&[u8]> {
+    pub fn get_record(&self, slot_idx: usize) -> Option<(TupleHeader, &[u8])> {
         let slots = self.slots();
         if slot_idx >= slots.len() {
             return None;
@@ -91,14 +99,22 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         if slot.length == 0 {
             return None;
         }
+        
         let start = slot.offset as usize;
+        let header_end = start + size_of::<TupleHeader>();
         let end = start + slot.length as usize;
-        Some(&self.data[start..end])
+        
+        let tuple_header = unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
+        let record_data = &self.data[header_end..end];
+        
+        Some((tuple_header, record_data))
     }
 
-    pub fn insert_record(&mut self, record: &[u8]) -> Option<usize> {
+    pub fn insert_record(&mut self, record: &[u8], xmin: TransactionId) -> Option<usize> {
+        let header_size = size_of::<TupleHeader>();
         let record_len = record.len();
-        let required_space = record_len + size_of::<PageSlot>();
+        let total_len = header_size + record_len;
+        let required_space = total_len + size_of::<PageSlot>();
 
         let mut header_copy = *self.header();
         let free_space = header_copy.free_space_upper - header_copy.free_space_lower;
@@ -108,12 +124,23 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         }
 
         let slot_idx = header_copy.total_slots as usize;
-        let new_offset = header_copy.free_space_upper - record_len as u16;
+        let new_offset = header_copy.free_space_upper - total_len as u16;
 
-        // Copy record data backwards
-        self.data[new_offset as usize..(new_offset as usize + record_len)].copy_from_slice(record);
+        let tuple_header = TupleHeader {
+            xmin,
+            xmax: INVALID_TXN_ID,
+        };
 
-        // Update header
+        // Write TupleHeader
+        unsafe {
+            std::ptr::write_unaligned(self.data[new_offset as usize..].as_mut_ptr() as *mut TupleHeader, tuple_header);
+        }
+
+        // Write record data
+        self.data[(new_offset as usize + header_size)..(new_offset as usize + total_len)]
+            .copy_from_slice(record);
+
+        // Update page header
         header_copy.total_slots += 1;
         header_copy.free_space_upper = new_offset;
         header_copy.free_space_lower += size_of::<PageSlot>() as u16;
@@ -127,9 +154,26 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         // Update slots array
         let slots = self.slots_mut();
         slots[slot_idx].offset = new_offset;
-        slots[slot_idx].length = record_len as u16;
+        slots[slot_idx].length = total_len as u16;
 
         Some(slot_idx)
+    }
+    
+    pub fn mark_deleted(&mut self, slot_idx: usize, xmax: TransactionId) -> bool {
+        let slots = self.slots();
+        if slot_idx >= slots.len() {
+            return false;
+        }
+        let slot = &slots[slot_idx];
+        if slot.length == 0 {
+            return false;
+        }
+        
+        let start = slot.offset as usize;
+        let mut tuple_header = unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
+        tuple_header.xmax = xmax;
+        unsafe { std::ptr::write_unaligned(self.data[start..].as_mut_ptr() as *mut TupleHeader, tuple_header) };
+        true
     }
 }
 
@@ -142,7 +186,7 @@ mod tests {
     #[test]
     fn insert_should_return_slot_index() {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
-        let slot = page.insert_record(b"data").unwrap();
+        let slot = page.insert_record(b"data", 100).unwrap();
         assert_eq!(slot, 0);
     }
 
@@ -150,17 +194,19 @@ mod tests {
     fn get_record_should_return_inserted_data() {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
         let record = b"Hello, World!";
-        let slot = page.insert_record(record).unwrap();
+        let slot = page.insert_record(record, 100).unwrap();
         
-        let retrieved = page.get_record(slot).unwrap();
+        let (header, retrieved) = page.get_record(slot).unwrap();
         assert_eq!(retrieved, record);
+        assert_eq!(header.xmin, 100);
+        assert_eq!(header.xmax, INVALID_TXN_ID);
     }
 
     #[test]
     fn insert_should_update_header_slots() {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
-        page.insert_record(b"A").unwrap();
-        page.insert_record(b"B").unwrap();
+        page.insert_record(b"A", 100).unwrap();
+        page.insert_record(b"B", 100).unwrap();
         
         assert_eq!(page.header().total_slots, 2);
     }
