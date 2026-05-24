@@ -2,5 +2,5 @@
 name = "wasdb_query"
 version = "0.1.0"
 edition = "2024"
-
 [dependencies]
+wasdb_catalog = { path = "../wasdb_catalog" }

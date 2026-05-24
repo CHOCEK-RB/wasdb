@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.4", features = ["derive"] }
+ratatui = "0.26.0"
+crossterm = "0.27.0"
+wasdb_storage = { path = "../wasdb_storage" }
+wasdb_buffer = { path = "../wasdb_buffer" }
+wasdb_catalog = { path = "../wasdb_catalog" }
+wasdb_btree = { path = "../wasdb_btree" }
+wasdb_query = { path = "../wasdb_query" }

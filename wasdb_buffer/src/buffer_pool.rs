@@ -162,4 +162,11 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BufferPoolManager<PAGE_S
     pub fn write_page(&self, frame_id: usize) -> RwLockWriteGuard<'_, SlottedPage<PAGE_SIZE>> {
         self.frames[frame_id].write()
     }
+
+    /// Allocates a new page on disk and brings it into the buffer pool.
+    pub fn new_page(&self, file_id: u32) -> Result<(usize, PageId), BufferError> {
+        let page_id = self.disk_manager.allocate_page(file_id);
+        let frame_id = self.fetch_page(page_id)?;
+        Ok((frame_id, page_id))
+    }
 }
