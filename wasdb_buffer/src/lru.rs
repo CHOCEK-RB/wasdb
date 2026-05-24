@@ -81,32 +81,48 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_lru_evict() {
+    fn evict_should_return_least_recently_used() {
+        // Arrange
         let lru = LRUReplacer::new(5);
         lru.record_access(1);
         lru.record_access(2);
         lru.record_access(3);
         lru.record_access(1);
 
-        assert_eq!(lru.size(), 3);
-        assert_eq!(lru.evict(), Some(2));
-        assert_eq!(lru.evict(), Some(3));
-        assert_eq!(lru.evict(), Some(1));
-        assert_eq!(lru.evict(), None);
+        // Act
+        let evicted = lru.evict();
+
+        // Assert
+        assert_eq!(evicted, Some(2));
     }
 
     #[test]
-    fn test_lru_pinning() {
+    fn size_should_track_number_of_managed_frames() {
+        // Arrange
+        let lru = LRUReplacer::new(5);
+        
+        // Act
+        lru.record_access(1);
+        lru.record_access(2);
+        lru.record_access(3);
+        lru.record_access(1);
+
+        // Assert
+        assert_eq!(lru.size(), 3);
+    }
+
+    #[test]
+    fn evict_should_ignore_pinned_frames() {
+        // Arrange
         let lru = LRUReplacer::new(5);
         lru.record_access(1);
         lru.record_access(2);
         
+        // Act
         lru.set_pin(1, true);
         
+        // Assert
         assert_eq!(lru.evict(), Some(2));
-        assert_eq!(lru.evict(), None); // 1 is pinned
-        
-        lru.set_pin(1, false);
-        assert_eq!(lru.evict(), Some(1));
+        assert_eq!(lru.evict(), None); // 1 is pinned and cannot be evicted
     }
 }

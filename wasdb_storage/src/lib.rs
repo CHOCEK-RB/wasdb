@@ -115,24 +115,38 @@ mod tests {
     const TEST_PAGE_SIZE: usize = 8192;
 
     #[test]
-    fn test_read_write_page() {
+    fn allocate_should_return_valid_page_id() {
+        // Arrange
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.path().to_path_buf();
-
         let disk_manager = BasicDiskManager::<TEST_PAGE_SIZE>::new(&path).unwrap();
 
+        // Act
         let page_id = disk_manager.allocate_page(0);
+
+        // Assert
         assert_eq!(page_id.page_num, 0);
+    }
+
+    #[test]
+    fn read_write_should_persist_data() {
+        // Arrange
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.path().to_path_buf();
+        let disk_manager = BasicDiskManager::<TEST_PAGE_SIZE>::new(&path).unwrap();
+        let page_id = disk_manager.allocate_page(0);
 
         let mut write_data = [0u8; TEST_PAGE_SIZE];
         write_data[0] = 42;
         write_data[TEST_PAGE_SIZE - 1] = 24;
 
+        // Act
         disk_manager.write_page(page_id, &write_data).unwrap();
 
         let mut read_data = [0u8; TEST_PAGE_SIZE];
         disk_manager.read_page(page_id, &mut read_data).unwrap();
 
+        // Assert
         assert_eq!(read_data[0], 42);
         assert_eq!(read_data[TEST_PAGE_SIZE - 1], 24);
         assert_eq!(read_data[1..TEST_PAGE_SIZE - 1], [0u8; TEST_PAGE_SIZE - 2]);
