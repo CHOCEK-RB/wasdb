@@ -1,6 +1,9 @@
 [package]
 name = "wasdb_catalog"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+thiserror.workspace = true
+wasdb_storage = { path = "../wasdb_storage" }
+wasdb_buffer = { path = "../wasdb_buffer" }

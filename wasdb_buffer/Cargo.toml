@@ -1,6 +1,13 @@
 [package]
 name = "wasdb_buffer"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
+thiserror.workspace = true
+parking_lot.workspace = true
+wasdb_storage = { path = "../wasdb_storage" }
+wasdb_page = { path = "../wasdb_page" }
+
+[dev-dependencies]
+tempfile = "3.27.0"

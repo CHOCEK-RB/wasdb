@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum CatalogError {
+    #[error("Table {0} already exists")]
+    TableExists(String),
+    #[error("Table {0} not found")]
+    TableNotFound(String),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod catalog;
+pub mod schema;
+pub mod table;

@@ -1,14 +1,17 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use thiserror::Error;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod buffer_pool;
+pub mod clock;
+pub mod frame;
+pub mod lru;
+pub mod replacer;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[derive(Error, Debug)]
+pub enum BufferError {
+    #[error("All frames are currently pinned")]
+    NoFreeFrames,
+    #[error("Page not found in buffer pool")]
+    PageNotFound,
+    #[error("Storage error: {0}")]
+    StorageError(#[from] wasdb_storage::StorageError),
 }
