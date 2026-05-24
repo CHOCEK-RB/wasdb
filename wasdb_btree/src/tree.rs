@@ -163,3 +163,37 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
         found_val.ok_or(BTreeError::KeyNotFound)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::NamedTempFile;
+    use wasdb_storage::BasicDiskManager;
+    use wasdb_buffer::lru::LRUReplacer;
+
+    const TEST_PAGE_SIZE: usize = 8192;
+
+    #[test]
+    fn test_btree_insert_and_search() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let disk_manager = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
+        let replacer = Box::new(LRUReplacer::new(10));
+        let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
+
+        let btree = BTreeIndex::new(&buffer_pool, None);
+        
+        assert!(btree.insert(1, 100).is_ok());
+        assert!(btree.insert(2, 200).is_ok());
+        assert!(btree.insert(3, 300).is_ok());
+
+        assert_eq!(btree.search(1).unwrap(), 100);
+        assert_eq!(btree.search(2).unwrap(), 200);
+        assert_eq!(btree.search(3).unwrap(), 300);
+        
+        // Duplicate
+        assert!(matches!(btree.insert(2, 999), Err(BTreeError::DuplicateKey)));
+        
+        // Not found
+        assert!(matches!(btree.search(99), Err(BTreeError::KeyNotFound)));
+    }
+}

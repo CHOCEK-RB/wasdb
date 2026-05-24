@@ -707,6 +707,7 @@ name = "wasdb_btree"
 version = "0.1.0"
 dependencies = [
  "parking_lot",
+ "tempfile",
  "thiserror",
  "wasdb_buffer",
  "wasdb_page",

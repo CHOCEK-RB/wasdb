@@ -46,3 +46,23 @@ impl Schema {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_schema_offsets() {
+        let cols = vec![
+            Column::new("a".into(), TypeId::Integer, 4),
+            Column::new("b".into(), TypeId::Varchar, 16),
+            Column::new("c".into(), TypeId::Boolean, 1),
+        ];
+        let schema = Schema::new(cols);
+
+        assert_eq!(schema.tuple_length, 21);
+        assert_eq!(schema.columns[0].offset, 0);
+        assert_eq!(schema.columns[1].offset, 4);
+        assert_eq!(schema.columns[2].offset, 20);
+    }
+}
