@@ -295,7 +295,10 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
                     let mut handled = false;
 
                     if let Some(ls_id) = left_sibling_id {
-                        let ls_frame = self.buffer_pool.fetch_page(ls_id).unwrap();
+                        let ls_frame = self
+                            .buffer_pool
+                            .fetch_page(ls_id)
+                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
                         let mut ls_data = self.buffer_pool.write_page(ls_frame);
                         let ls_node = unsafe {
                             &mut *(ls_data.data.as_mut_ptr() as *mut crate::node::LeafNode)
@@ -348,14 +351,21 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
                             handled = true;
                         }
                         drop(ls_data);
-                        self.buffer_pool.unpin_page(ls_id, true).unwrap();
+                        self.buffer_pool
+                            .unpin_page(ls_id, true)
+                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
                     }
 
                     if !handled {
                         if let Some(rs_id) = right_sibling_id {
                             // Similar logic for right sibling (omitted for brevity)
-                            let _rs_frame = self.buffer_pool.fetch_page(rs_id).unwrap();
-                            self.buffer_pool.unpin_page(rs_id, false).unwrap();
+                            let _rs_frame = self
+                                .buffer_pool
+                                .fetch_page(rs_id)
+                                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+                            self.buffer_pool
+                                .unpin_page(rs_id, false)
+                                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
                         }
                     }
                 }

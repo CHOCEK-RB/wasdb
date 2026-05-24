@@ -66,23 +66,24 @@ impl ExternalMergeSortExecutor {
         serde_json::from_str(buf).ok()
     }
 
-    fn perform_external_merge_sort(&mut self) {
+    fn perform_external_merge_sort(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut chunk = Vec::new();
 
         // Phase 1: Read, Sort, Write
         while let Some(tuple) = self.child.next() {
             chunk.push(tuple);
             if chunk.len() >= self.chunk_size {
-                self.flush_chunk(&mut chunk);
+                self.flush_chunk(&mut chunk)?;
             }
         }
         if !chunk.is_empty() {
-            self.flush_chunk(&mut chunk);
+            self.flush_chunk(&mut chunk)?;
         }
 
         // Phase 2: Setup K-way merge
         for (idx, run) in self.runs.iter_mut().enumerate() {
-            run.seek(SeekFrom::Start(0)).unwrap();
+            run.seek(SeekFrom::Start(0))
+                .map_err(|e| format!("Failed to seek temp file: {}", e))?;
             if let Some(tuple) = Self::read_next_tuple(run) {
                 self.heap.push(HeapEntry {
                     tuple,
@@ -91,9 +92,10 @@ impl ExternalMergeSortExecutor {
                 });
             }
         }
+        Ok(())
     }
 
-    fn flush_chunk(&mut self, chunk: &mut Vec<Tuple>) {
+    fn flush_chunk(&mut self, chunk: &mut Vec<Tuple>) -> Result<(), Box<dyn std::error::Error>> {
         let idx = self.sort_idx;
         chunk.sort_by(|a, b| {
             a.values[idx]
@@ -104,11 +106,12 @@ impl ExternalMergeSortExecutor {
         let mut file = NamedTempFile::new().expect("Failed to create temp file for sort run");
         for tuple in chunk.iter() {
             let data = Self::serialize_tuple(tuple);
-            file.write_all(&data).unwrap();
-            file.write_all(b"\n").unwrap(); // newline delimited
+            file.write_all(&data)?;
+            file.write_all(b"\n")?; // newline delimited
         }
         self.runs.push(file);
         chunk.clear();
+        Ok(())
     }
 
     fn read_next_tuple(file: &mut impl Read) -> Option<Tuple> {
@@ -129,7 +132,7 @@ impl ExternalMergeSortExecutor {
         if buf.is_empty() {
             return None;
         }
-        Self::deserialize_tuple(std::str::from_utf8(&buf).unwrap())
+        Self::deserialize_tuple(std::str::from_utf8(&buf).ok()?)
     }
 }
 
@@ -138,7 +141,8 @@ impl Executor for ExternalMergeSortExecutor {
         self.child.init();
         self.runs.clear();
         self.heap.clear();
-        self.perform_external_merge_sort();
+        self.perform_external_merge_sort()
+            .expect("External merge sort failed during initialization");
     }
 
     fn next(&mut self) -> Option<Tuple> {

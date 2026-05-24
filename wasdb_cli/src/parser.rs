@@ -83,7 +83,7 @@ impl<'a> Lexer<'a> {
                     let mut num = 0;
                     while let Some(&ch) = self.chars.peek() {
                         if ch.is_ascii_digit() {
-                            num = num * 10 + ch.to_digit(10).unwrap() as i32;
+                            num = num * 10 + ch.to_digit(10).expect("char is an ascii digit") as i32;
                             self.chars.next();
                         } else {
                             break;
