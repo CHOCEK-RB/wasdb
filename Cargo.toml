@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = [
+    "wasdb_storage",
+    "wasdb_page",
+    "wasdb_buffer",
+    "wasdb_catalog",
+    "wasdb_btree",
+    "wasdb_query",
+    "wasdb_cli"
+]
+
+[workspace.dependencies]
+thiserror = "1.0"
+anyhow = "1.0"
+zerocopy = "0.7"
+parking_lot = "0.12"
+clap = { version = "4.4", features = ["derive"] }
+ratatui = "0.26"
+crossterm = "0.27"
