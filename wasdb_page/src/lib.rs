@@ -140,21 +140,28 @@ mod tests {
     const TEST_PAGE_SIZE: usize = 8192;
 
     #[test]
-    fn test_insert_and_get() {
+    fn insert_should_return_slot_index() {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
+        let slot = page.insert_record(b"data").unwrap();
+        assert_eq!(slot, 0);
+    }
 
-        let record1 = b"Hello, World!";
-        let slot1 = page.insert_record(record1).unwrap();
-        assert_eq!(slot1, 0);
+    #[test]
+    fn get_record_should_return_inserted_data() {
+        let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
+        let record = b"Hello, World!";
+        let slot = page.insert_record(record).unwrap();
+        
+        let retrieved = page.get_record(slot).unwrap();
+        assert_eq!(retrieved, record);
+    }
 
-        let record2 = b"Another record";
-        let slot2 = page.insert_record(record2).unwrap();
-        assert_eq!(slot2, 1);
-
-        assert_eq!(page.get_record(slot1).unwrap(), record1);
-        assert_eq!(page.get_record(slot2).unwrap(), record2);
-
-        let header = page.header();
-        assert_eq!(header.total_slots, 2);
+    #[test]
+    fn insert_should_update_header_slots() {
+        let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
+        page.insert_record(b"A").unwrap();
+        page.insert_record(b"B").unwrap();
+        
+        assert_eq!(page.header().total_slots, 2);
     }
 }

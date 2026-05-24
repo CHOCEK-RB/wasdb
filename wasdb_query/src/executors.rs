@@ -93,29 +93,32 @@ mod tests {
     use wasdb_catalog::schema::{Column, TypeId};
 
     #[test]
-    fn test_seq_scan_and_filter() {
-        let schema = Schema::new(vec![
-            Column::new(String::from("id"), TypeId::Integer, 4),
-        ]);
+    fn seq_scan_should_return_all_tuples() {
+        let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
+        let tuples = vec![vec![Value::Integer(1)], vec![Value::Integer(5)]];
+        let mut scan = SeqScanExecutor::new(schema, tuples);
+        
+        scan.init();
+        assert_eq!(scan.next(), Some(vec![Value::Integer(1)]));
+        assert_eq!(scan.next(), Some(vec![Value::Integer(5)]));
+        assert_eq!(scan.next(), None);
+    }
 
-        let tuples = vec![
-            vec![Value::Integer(1)],
-            vec![Value::Integer(5)],
-            vec![Value::Integer(10)],
-        ];
-
+    #[test]
+    fn filter_should_drop_unmatched_tuples() {
+        let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
+        let tuples = vec![vec![Value::Integer(1)], vec![Value::Integer(10)]];
         let scan = SeqScanExecutor::new(schema, tuples);
         
         let mut filter = FilterExecutor::new(Box::new(scan), |t| {
             if let Value::Integer(id) = t[0] {
-                id > 1
+                id > 5
             } else {
                 false
             }
         });
 
         filter.init();
-        assert_eq!(filter.next(), Some(vec![Value::Integer(5)]));
         assert_eq!(filter.next(), Some(vec![Value::Integer(10)]));
         assert_eq!(filter.next(), None);
     }

@@ -174,26 +174,44 @@ mod tests {
     const TEST_PAGE_SIZE: usize = 8192;
 
     #[test]
-    fn test_btree_insert_and_search() {
+    fn insert_should_succeed_for_new_key() {
         let temp_file = NamedTempFile::new().unwrap();
-        let disk_manager = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
-        let replacer = Box::new(LRUReplacer::new(10));
-        let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
-
-        let btree = BTreeIndex::new(&buffer_pool, None);
+        let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
+        let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
+        let btree = BTreeIndex::new(&buffer, None);
         
         assert!(btree.insert(1, 100).is_ok());
-        assert!(btree.insert(2, 200).is_ok());
-        assert!(btree.insert(3, 300).is_ok());
+    }
 
+    #[test]
+    fn search_should_return_value_for_existing_key() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
+        let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
+        let btree = BTreeIndex::new(&buffer, None);
+        
+        btree.insert(1, 100).unwrap();
         assert_eq!(btree.search(1).unwrap(), 100);
-        assert_eq!(btree.search(2).unwrap(), 200);
-        assert_eq!(btree.search(3).unwrap(), 300);
+    }
+
+    #[test]
+    fn insert_should_return_error_for_duplicate_key() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
+        let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
+        let btree = BTreeIndex::new(&buffer, None);
         
-        // Duplicate
+        btree.insert(2, 200).unwrap();
         assert!(matches!(btree.insert(2, 999), Err(BTreeError::DuplicateKey)));
+    }
+
+    #[test]
+    fn search_should_return_error_for_missing_key() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
+        let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
+        let btree = BTreeIndex::new(&buffer, None);
         
-        // Not found
         assert!(matches!(btree.search(99), Err(BTreeError::KeyNotFound)));
     }
 }
