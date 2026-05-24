@@ -2,14 +2,16 @@ use std::sync::Arc;
 use wasdb_catalog::schema::Schema;
 use wasdb_tx::{INVALID_TXN_ID, TransactionId, TransactionManager};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Value {
     Integer(i32),
     Varchar(String),
     Boolean(bool),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tuple {
     pub xmin: TransactionId,
     pub xmax: TransactionId,
@@ -98,18 +100,18 @@ impl Executor for SeqScanExecutor {
     }
 }
 
-pub struct FilterExecutor<Child: Executor> {
-    child: Box<Child>,
+pub struct FilterExecutor {
+    child: Box<dyn Executor>,
     predicate: fn(&Tuple) -> bool,
 }
 
-impl<E: Executor> FilterExecutor<E> {
-    pub fn new(child: Box<E>, predicate: fn(&Tuple) -> bool) -> Self {
+impl FilterExecutor {
+    pub fn new(child: Box<dyn Executor>, predicate: fn(&Tuple) -> bool) -> Self {
         Self { child, predicate }
     }
 }
 
-impl<E: Executor> Executor for FilterExecutor<E> {
+impl Executor for FilterExecutor {
     fn init(&mut self) {
         self.child.init();
     }
@@ -128,18 +130,18 @@ impl<E: Executor> Executor for FilterExecutor<E> {
     }
 }
 
-pub struct NestedLoopJoinExecutor<Left: Executor, Right: Executor> {
-    left: Box<Left>,
-    right: Box<Right>,
+pub struct NestedLoopJoinExecutor {
+    left: Box<dyn Executor>,
+    right: Box<dyn Executor>,
     predicate: fn(&Tuple, &Tuple) -> bool,
     schema: Schema,
     left_tuple: Option<Tuple>,
 }
 
-impl<Left: Executor, Right: Executor> NestedLoopJoinExecutor<Left, Right> {
+impl NestedLoopJoinExecutor {
     pub fn new(
-        left: Box<Left>,
-        right: Box<Right>,
+        left: Box<dyn Executor>,
+        right: Box<dyn Executor>,
         predicate: fn(&Tuple, &Tuple) -> bool,
         schema: Schema,
     ) -> Self {
@@ -153,7 +155,7 @@ impl<Left: Executor, Right: Executor> NestedLoopJoinExecutor<Left, Right> {
     }
 }
 
-impl<Left: Executor, Right: Executor> Executor for NestedLoopJoinExecutor<Left, Right> {
+impl Executor for NestedLoopJoinExecutor {
     fn init(&mut self) {
         self.left.init();
         self.right.init();

@@ -63,11 +63,11 @@ impl LogRecord {
                 if buf.len() < 25 {
                     return None;
                 }
-                let txn_id = u64::from_le_bytes(buf[1..9].try_into().unwrap());
-                let file_id = u32::from_le_bytes(buf[9..13].try_into().unwrap());
-                let page_num = u32::from_le_bytes(buf[13..17].try_into().unwrap());
-                let offset = u16::from_le_bytes(buf[17..19].try_into().unwrap());
-                let len = u32::from_le_bytes(buf[19..23].try_into().unwrap()) as usize;
+                let txn_id = u64::from_le_bytes(buf[1..9].try_into().ok()?);
+                let file_id = u32::from_le_bytes(buf[9..13].try_into().ok()?);
+                let page_num = u32::from_le_bytes(buf[13..17].try_into().ok()?);
+                let offset = u16::from_le_bytes(buf[17..19].try_into().ok()?);
+                let len = u32::from_le_bytes(buf[19..23].try_into().ok()?) as usize;
                 if buf.len() < 23 + len {
                     return None;
                 }
@@ -86,14 +86,14 @@ impl LogRecord {
                 if buf.len() < 9 {
                     return None;
                 }
-                let txn_id = u64::from_le_bytes(buf[1..9].try_into().unwrap());
+                let txn_id = u64::from_le_bytes(buf[1..9].try_into().ok()?);
                 Some((LogRecord::Commit { txn_id }, 9))
             }
             3 => {
                 if buf.len() < 9 {
                     return None;
                 }
-                let txn_id = u64::from_le_bytes(buf[1..9].try_into().unwrap());
+                let txn_id = u64::from_le_bytes(buf[1..9].try_into().ok()?);
                 Some((LogRecord::Abort { txn_id }, 9))
             }
             _ => None,
@@ -166,8 +166,15 @@ impl RecoveryManager {
         let mut cursor = 0;
 
         while cursor + 12 <= buf.len() {
-            let size = u32::from_le_bytes(buf[cursor..cursor + 4].try_into().unwrap()) as usize;
-            let _lsn = u64::from_le_bytes(buf[cursor + 4..cursor + 12].try_into().unwrap());
+            let size_bytes: [u8; 4] = buf[cursor..cursor + 4]
+                .try_into()
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Corrupted WAL size"))?;
+            let size = u32::from_le_bytes(size_bytes) as usize;
+
+            let lsn_bytes: [u8; 8] = buf[cursor + 4..cursor + 12]
+                .try_into()
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Corrupted WAL LSN"))?;
+            let _lsn = u64::from_le_bytes(lsn_bytes);
             cursor += 12;
 
             if cursor + size > buf.len() {

@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 parking_lot.workspace = true
+serde = { version = "1.0.228", features = ["derive"] }
 thiserror.workspace = true
