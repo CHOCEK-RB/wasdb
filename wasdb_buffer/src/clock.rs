@@ -128,16 +128,13 @@ mod tests {
 
     #[test]
     fn evict_should_sweep_and_return_first_eligible_frame() {
-        // Arrange
         let clock = ClockReplacer::new(5);
         clock.record_access(1);
         clock.record_access(2);
         clock.record_access(3);
 
-        // Act
         let evicted = clock.evict();
 
-        // Assert
         // Frames 1, 2, 3 have ref_bits = true.
         // First eviction will sweep all, set ref_bits to false, 
         // and then evict the first one it sees (frame 1 because clock hand starts at 0, sweeps 1, 2, 3).
@@ -146,16 +143,13 @@ mod tests {
 
     #[test]
     fn evict_should_skip_pinned_frames_during_sweep() {
-        // Arrange
         let clock = ClockReplacer::new(5);
         clock.record_access(1);
         clock.record_access(2);
         
-        // Act
         clock.set_pin(1, true);
         let evicted = clock.evict();
         
-        // Assert
         // 1 is pinned, so 2 should be evicted even though 1 is earlier in the sweep.
         assert_eq!(evicted, Some(2));
     }

@@ -69,7 +69,6 @@ mod tests {
 
     #[test]
     fn next_should_return_tuples_in_sorted_order() {
-        // Arrange
         let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
         let tuples = vec![
             vec![Value::Integer(10)],
@@ -79,10 +78,8 @@ mod tests {
         let scan = SeqScanExecutor::new(schema, tuples);
         let mut sort = ExternalMergeSortExecutor::new(Box::new(scan), 0);
 
-        // Act
         sort.init();
 
-        // Assert
         assert_eq!(sort.next(), Some(vec![Value::Integer(1)]));
         assert_eq!(sort.next(), Some(vec![Value::Integer(5)]));
         assert_eq!(sort.next(), Some(vec![Value::Integer(10)]));

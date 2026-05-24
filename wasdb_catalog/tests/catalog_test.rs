@@ -4,7 +4,6 @@ use wasdb_storage::PageId;
 
 #[test]
 fn create_table_should_store_metadata() {
-    // Arrange
     let mut catalog = Catalog::new();
     let schema = Schema::new(vec![
         Column::new("id".to_string(), TypeId::Integer, 4),
@@ -12,11 +11,9 @@ fn create_table_should_store_metadata() {
     ]);
     let root_page_id = PageId { file_id: 0, page_num: 1 };
 
-    // Act
     catalog.create_table("users".to_string(), schema, root_page_id).unwrap();
     let table = catalog.get_table("users").unwrap();
 
-    // Assert
     assert_eq!(table.table_name, "users");
     assert_eq!(table.schema.columns.len(), 2);
     assert_eq!(table.schema.columns[1].offset, 4);
