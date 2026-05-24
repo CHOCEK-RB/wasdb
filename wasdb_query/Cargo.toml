@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 [dependencies]
 wasdb_catalog = { path = "../wasdb_catalog" }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+wasdb_storage = { path = "../wasdb_storage" }
+wasdb_buffer = { path = "../wasdb_buffer" }
+wasdb_btree = { path = "../wasdb_btree" }

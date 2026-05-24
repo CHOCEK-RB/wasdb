@@ -759,7 +759,11 @@ dependencies = [
 name = "wasdb_query"
 version = "0.1.0"
 dependencies = [
+ "tempfile",
+ "wasdb_btree",
+ "wasdb_buffer",
  "wasdb_catalog",
+ "wasdb_storage",
 ]
 
 [[package]]
