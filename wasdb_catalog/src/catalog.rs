@@ -37,7 +37,10 @@ impl Catalog {
                     index_name: format!("{}_pk", table_name),
                     table_name: table_name.clone(),
                     column_index: i,
-                    root_page_id: PageId { file_id: 0, page_num: 0 }, // Placeholder, in real db we would allocate a page for the BTree
+                    root_page_id: PageId {
+                        file_id: 0,
+                        page_num: 0,
+                    }, // Placeholder, in real db we would allocate a page for the BTree
                     is_unique: true,
                 });
             }

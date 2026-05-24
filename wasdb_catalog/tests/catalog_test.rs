@@ -9,9 +9,14 @@ fn create_table_should_store_metadata() {
         Column::new("id".to_string(), TypeId::Integer, 4),
         Column::new("name".to_string(), TypeId::Varchar, 32),
     ]);
-    let root_page_id = PageId { file_id: 0, page_num: 1 };
+    let root_page_id = PageId {
+        file_id: 0,
+        page_num: 1,
+    };
 
-    catalog.create_table("users".to_string(), schema, root_page_id).unwrap();
+    catalog
+        .create_table("users".to_string(), schema, root_page_id)
+        .unwrap();
     let table = catalog.get_table("users").unwrap();
 
     assert_eq!(table.table_name, "users");

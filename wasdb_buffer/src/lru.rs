@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn size_should_track_number_of_managed_frames() {
         let lru = LRUReplacer::new(5);
-        
+
         lru.record_access(1);
         lru.record_access(2);
         lru.record_access(3);
@@ -110,9 +110,9 @@ mod tests {
         let lru = LRUReplacer::new(5);
         lru.record_access(1);
         lru.record_access(2);
-        
+
         lru.set_pin(1, true);
-        
+
         assert_eq!(lru.evict(), Some(2));
         assert_eq!(lru.evict(), None); // 1 is pinned and cannot be evicted
     }

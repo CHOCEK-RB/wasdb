@@ -24,7 +24,7 @@ pub struct BufferPoolManager<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> 
     replacer: Box<dyn ReplacementPolicy>,
     /// Optional LogManager for enforcing WAL flush rules.
     log_manager: Option<Arc<LogManager>>,
-    
+
     // Metrics
     hits: AtomicUsize,
     misses: AtomicUsize,

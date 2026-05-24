@@ -89,7 +89,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, db_path: &str) -> io::Result<
                     }
 
                     logs.push(format!("Executing: {}", input));
-                    
+
                     let mut p = parser::Parser::new(&input);
                     match p.parse() {
                         Ok(ast) => logs.push(format!("Parsed AST: {:?}", ast)),

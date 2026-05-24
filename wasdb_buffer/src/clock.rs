@@ -136,7 +136,7 @@ mod tests {
         let evicted = clock.evict();
 
         // Frames 1, 2, 3 have ref_bits = true.
-        // First eviction will sweep all, set ref_bits to false, 
+        // First eviction will sweep all, set ref_bits to false,
         // and then evict the first one it sees (frame 1 because clock hand starts at 0, sweeps 1, 2, 3).
         assert_eq!(evicted, Some(1));
     }
@@ -146,10 +146,10 @@ mod tests {
         let clock = ClockReplacer::new(5);
         clock.record_access(1);
         clock.record_access(2);
-        
+
         clock.set_pin(1, true);
         let evicted = clock.evict();
-        
+
         // 1 is pinned, so 2 should be evicted even though 1 is earlier in the sweep.
         assert_eq!(evicted, Some(2));
     }

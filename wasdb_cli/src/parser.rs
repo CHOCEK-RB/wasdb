@@ -20,7 +20,7 @@ pub enum Token {
     CloseParen,
     Equals,
     Semicolon,
-    EOF,
+    Eof,
 }
 
 pub struct Lexer<'a> {
@@ -48,15 +48,30 @@ impl<'a> Lexer<'a> {
         self.skip_whitespace();
         if let Some(&c) = self.chars.peek() {
             match c {
-                '(' => { self.chars.next(); Token::OpenParen }
-                ')' => { self.chars.next(); Token::CloseParen }
-                ',' => { self.chars.next(); Token::Comma }
-                '=' => { self.chars.next(); Token::Equals }
-                ';' => { self.chars.next(); Token::Semicolon }
+                '(' => {
+                    self.chars.next();
+                    Token::OpenParen
+                }
+                ')' => {
+                    self.chars.next();
+                    Token::CloseParen
+                }
+                ',' => {
+                    self.chars.next();
+                    Token::Comma
+                }
+                '=' => {
+                    self.chars.next();
+                    Token::Equals
+                }
+                ';' => {
+                    self.chars.next();
+                    Token::Semicolon
+                }
                 '\'' => {
                     self.chars.next();
                     let mut s = String::new();
-                    while let Some(ch) = self.chars.next() {
+                    for ch in self.chars.by_ref() {
                         if ch == '\'' {
                             break;
                         }
@@ -105,13 +120,13 @@ impl<'a> Lexer<'a> {
                 }
             }
         } else {
-            Token::EOF
+            Token::Eof
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub enum AST {
+pub enum Ast {
     Select {
         columns: Vec<String>,
         table: String,
@@ -127,7 +142,7 @@ pub enum AST {
     },
     Delete {
         table: String,
-    }
+    },
 }
 
 pub struct Parser<'a> {
@@ -139,7 +154,10 @@ impl<'a> Parser<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer::new(input);
         let current_token = lexer.next_token();
-        Self { lexer, current_token }
+        Self {
+            lexer,
+            current_token,
+        }
     }
 
     fn advance(&mut self) {
@@ -151,33 +169,33 @@ impl<'a> Parser<'a> {
             self.advance();
             Ok(())
         } else {
-            Err(format!("Expected {:?}, found {:?}", token, self.current_token))
+            Err(format!(
+                "Expected {:?}, found {:?}",
+                token, self.current_token
+            ))
         }
     }
 
-    pub fn parse(&mut self) -> Result<AST, String> {
+    pub fn parse(&mut self) -> Result<Ast, String> {
         match self.current_token.clone() {
             Token::Select => self.parse_select(),
             Token::Insert => self.parse_insert(),
             Token::Create => self.parse_create(),
             Token::Delete => self.parse_delete(),
-            _ => Err(format!("Unexpected statement start: {:?}", self.current_token)),
+            _ => Err(format!(
+                "Unexpected statement start: {:?}",
+                self.current_token
+            )),
         }
     }
 
-    fn parse_select(&mut self) -> Result<AST, String> {
+    fn parse_select(&mut self) -> Result<Ast, String> {
         self.expect(Token::Select)?;
         let mut columns = Vec::new();
-        
-        loop {
-            if let Token::Identifier(id) = &self.current_token {
-                columns.push(id.clone());
-                self.advance();
-            } else if let Token::StringLiteral(s) = &self.current_token { // Handle * ? 
-                if s == "*" { columns.push("*".into()); self.advance(); }
-            } else {
-                break;
-            }
+
+        while let Token::Identifier(id) = &self.current_token {
+            columns.push(id.clone());
+            self.advance();
 
             if self.current_token == Token::Comma {
                 self.advance();
@@ -187,7 +205,7 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(Token::From)?;
-        
+
         let table = if let Token::Identifier(id) = &self.current_token {
             let t = id.clone();
             self.advance();
@@ -196,10 +214,10 @@ impl<'a> Parser<'a> {
             return Err("Expected table name".into());
         };
 
-        Ok(AST::Select { columns, table })
+        Ok(Ast::Select { columns, table })
     }
 
-    fn parse_insert(&mut self) -> Result<AST, String> {
+    fn parse_insert(&mut self) -> Result<Ast, String> {
         self.expect(Token::Insert)?;
         self.expect(Token::Into)?;
 
@@ -230,10 +248,10 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(Token::CloseParen)?;
-        Ok(AST::Insert { table, values })
+        Ok(Ast::Insert { table, values })
     }
 
-    fn parse_create(&mut self) -> Result<AST, String> {
+    fn parse_create(&mut self) -> Result<Ast, String> {
         self.expect(Token::Create)?;
         self.expect(Token::Table)?;
 
@@ -247,13 +265,9 @@ impl<'a> Parser<'a> {
 
         self.expect(Token::OpenParen)?;
         let mut columns = Vec::new();
-        loop {
-            if let Token::Identifier(id) = &self.current_token {
-                columns.push(id.clone());
-                self.advance();
-            } else {
-                break;
-            }
+        while let Token::Identifier(id) = &self.current_token {
+            columns.push(id.clone());
+            self.advance();
 
             // Skip type for now
             if let Token::Identifier(_) = &self.current_token {
@@ -267,13 +281,13 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(Token::CloseParen)?;
-        Ok(AST::Create { table, columns })
+        Ok(Ast::Create { table, columns })
     }
 
-    fn parse_delete(&mut self) -> Result<AST, String> {
+    fn parse_delete(&mut self) -> Result<Ast, String> {
         self.expect(Token::Delete)?;
         self.expect(Token::From)?;
-        
+
         let table = if let Token::Identifier(id) = &self.current_token {
             let t = id.clone();
             self.advance();
@@ -281,6 +295,6 @@ impl<'a> Parser<'a> {
         } else {
             return Err("Expected table name".into());
         };
-        Ok(AST::Delete { table })
+        Ok(Ast::Delete { table })
     }
 }

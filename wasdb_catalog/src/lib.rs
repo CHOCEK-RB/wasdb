@@ -9,8 +9,8 @@ pub enum CatalogError {
 }
 
 pub mod catalog;
-pub mod schema;
 pub mod heap;
+pub mod schema;
 pub mod table;
 
 pub use catalog::Catalog;

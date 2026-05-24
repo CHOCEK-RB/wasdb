@@ -17,13 +17,22 @@ fn end_to_end_query_execution_should_succeed() {
     let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
 
     let btree = BTreeIndex::new(&buffer_pool, None);
-    let mut ctid1 = wasdb_storage::CTID::default(); ctid1.slot_idx = 100;
+    let ctid1 = wasdb_storage::CTID {
+        slot_idx: 100,
+        ..Default::default()
+    };
     btree.insert(10, ctid1).unwrap();
-    
-    let mut ctid2 = wasdb_storage::CTID::default(); ctid2.slot_idx = 200;
+
+    let ctid2 = wasdb_storage::CTID {
+        slot_idx: 200,
+        ..Default::default()
+    };
     btree.insert(20, ctid2).unwrap();
-    
-    let mut ctid3 = wasdb_storage::CTID::default(); ctid3.slot_idx = 50;
+
+    let ctid3 = wasdb_storage::CTID {
+        slot_idx: 50,
+        ..Default::default()
+    };
     btree.insert(5, ctid3).unwrap();
 
     assert_eq!(btree.search(10).unwrap(), ctid1);
@@ -70,7 +79,7 @@ fn end_to_end_query_execution_should_succeed() {
     ];
     let scan_for_sort = SeqScanExecutor::new(schema.clone(), tuples_for_sort);
     let mut sort = ExternalMergeSortExecutor::new(Box::new(scan_for_sort), 0);
-    
+
     sort.init();
     let mut sorted_tuples = Vec::new();
     while let Some(tuple) = sort.next() {

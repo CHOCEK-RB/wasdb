@@ -1,10 +1,10 @@
-use wasdb_storage::{PageId, DiskManager};
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wasdb_buffer::buffer_pool::BufferPoolManager;
 use wasdb_buffer::BufferError;
-use wasdb_page::{SlottedPage, TupleHeader};
-use parking_lot::RwLock;
+use wasdb_page::TupleHeader;
+use wasdb_storage::{DiskManager, PageId};
 
 /// Represents a tuple/record in the table heap.
 pub struct Tuple {
@@ -17,6 +17,12 @@ pub struct FreeSpaceMap {
     /// Maps page_num -> free_space in bytes.
     /// This is an in-memory approximation.
     pub space_map: HashMap<u32, u16>,
+}
+
+impl Default for FreeSpaceMap {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FreeSpaceMap {
@@ -59,7 +65,7 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
             Some(pn) => pn,
             None => {
                 // Allocate a new first page for this table heap
-                let (frame_id, page_id) = buffer_pool.new_page(file_id)?;
+                let (_frame_id, page_id) = buffer_pool.new_page(file_id)?;
                 buffer_pool.unpin_page(page_id, true)?;
                 page_id.page_num
             }
@@ -92,7 +98,10 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
         };
 
         let page_id = if let Some(pn) = target_page_num {
-            PageId { file_id: self.file_id, page_num: pn }
+            PageId {
+                file_id: self.file_id,
+                page_num: pn,
+            }
         } else {
             // Traverse the linked list or allocate a new page.
             let mut curr_page_num = self.first_page_num;
@@ -100,11 +109,16 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
             let mut found_page = false;
 
             loop {
-                let pid = PageId { file_id: self.file_id, page_num: curr_page_num };
+                let pid = PageId {
+                    file_id: self.file_id,
+                    page_num: curr_page_num,
+                };
                 let frame_id = self.buffer_pool.fetch_page(pid)?;
                 let next_page_num = {
                     let page = self.buffer_pool.read_page(frame_id);
-                    if page.header().free_space_upper - page.header().free_space_lower >= required_space {
+                    if page.header().free_space_upper - page.header().free_space_lower
+                        >= required_space
+                    {
                         found_page = true;
                         page.header().next_page_num
                     } else {
@@ -128,13 +142,19 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
             }
 
             if let Some(pn) = target_page_num {
-                PageId { file_id: self.file_id, page_num: pn }
+                PageId {
+                    file_id: self.file_id,
+                    page_num: pn,
+                }
             } else {
                 // Need to allocate a new page and append it
-                let (new_frame_id, new_page_id) = self.buffer_pool.new_page(self.file_id)?;
-                
+                let (_new_frame_id, new_page_id) = self.buffer_pool.new_page(self.file_id)?;
+
                 // Link last page to new page
-                let last_pid = PageId { file_id: self.file_id, page_num: last_page_num };
+                let last_pid = PageId {
+                    file_id: self.file_id,
+                    page_num: last_page_num,
+                };
                 let last_frame = self.buffer_pool.fetch_page(last_pid)?;
                 {
                     let mut last_page = self.buffer_pool.write_page(last_frame);
@@ -151,9 +171,10 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
         let frame_id = self.buffer_pool.fetch_page(page_id)?;
         let slot_index = {
             let mut page = self.buffer_pool.write_page(frame_id);
-            let slot_idx = page.insert_record(&tuple.data, tuple.header.xmin)
+            let slot_idx = page
+                .insert_record(&tuple.data, tuple.header.xmin)
                 .ok_or(BufferError::NoFreeFrames)?;
-            
+
             // Update FSM
             let free_space = page.header().free_space_upper - page.header().free_space_lower;
             let mut fsm = self.fsm.write();
@@ -169,8 +190,11 @@ impl<const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> TableHeap<PAGE_SIZE, D> 
     /// Read a tuple via CTID
     pub fn get_tuple(&self, ctid: (u32, u16)) -> Result<Tuple, BufferError> {
         let (page_num, slot_index) = ctid;
-        let page_id = PageId { file_id: self.file_id, page_num };
-        
+        let page_id = PageId {
+            file_id: self.file_id,
+            page_num,
+        };
+
         let frame_id = self.buffer_pool.fetch_page(page_id)?;
         let tuple_res = {
             let page = self.buffer_pool.read_page(frame_id);

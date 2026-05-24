@@ -1,5 +1,5 @@
-use wasdb_tx::{TransactionId, INVALID_TXN_ID};
 use std::mem::size_of;
+use wasdb_tx::{TransactionId, INVALID_TXN_ID};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -101,14 +101,15 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         if slot.length == 0 {
             return None;
         }
-        
+
         let start = slot.offset as usize;
         let header_end = start + size_of::<TupleHeader>();
         let end = start + slot.length as usize;
-        
-        let tuple_header = unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
+
+        let tuple_header =
+            unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
         let record_data = &self.data[header_end..end];
-        
+
         Some((tuple_header, record_data))
     }
 
@@ -135,7 +136,10 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
 
         // Write TupleHeader
         unsafe {
-            std::ptr::write_unaligned(self.data[new_offset as usize..].as_mut_ptr() as *mut TupleHeader, tuple_header);
+            std::ptr::write_unaligned(
+                self.data[new_offset as usize..].as_mut_ptr() as *mut TupleHeader,
+                tuple_header,
+            );
         }
 
         // Write record data
@@ -160,7 +164,7 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
 
         Some(slot_idx)
     }
-    
+
     pub fn mark_deleted(&mut self, slot_idx: usize, xmax: TransactionId) -> bool {
         let slots = self.slots();
         if slot_idx >= slots.len() {
@@ -170,11 +174,17 @@ impl<const PAGE_SIZE: usize> SlottedPage<PAGE_SIZE> {
         if slot.length == 0 {
             return false;
         }
-        
+
         let start = slot.offset as usize;
-        let mut tuple_header = unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
+        let mut tuple_header =
+            unsafe { std::ptr::read_unaligned(self.data[start..].as_ptr() as *const TupleHeader) };
         tuple_header.xmax = xmax;
-        unsafe { std::ptr::write_unaligned(self.data[start..].as_mut_ptr() as *mut TupleHeader, tuple_header) };
+        unsafe {
+            std::ptr::write_unaligned(
+                self.data[start..].as_mut_ptr() as *mut TupleHeader,
+                tuple_header,
+            )
+        };
         true
     }
 }
@@ -197,7 +207,7 @@ mod tests {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
         let record = b"Hello, World!";
         let slot = page.insert_record(record, 100).unwrap();
-        
+
         let (header, retrieved) = page.get_record(slot).unwrap();
         assert_eq!(retrieved, record);
         assert_eq!(header.xmin, 100);
@@ -209,7 +219,7 @@ mod tests {
         let mut page = SlottedPage::<TEST_PAGE_SIZE>::new();
         page.insert_record(b"A", 100).unwrap();
         page.insert_record(b"B", 100).unwrap();
-        
+
         assert_eq!(page.header().total_slots, 2);
     }
 }

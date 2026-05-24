@@ -1,6 +1,6 @@
-use wasdb_catalog::schema::Schema;
-use wasdb_tx::{TransactionId, TransactionManager, INVALID_TXN_ID};
 use std::sync::Arc;
+use wasdb_catalog::schema::Schema;
+use wasdb_tx::{INVALID_TXN_ID, TransactionId, TransactionManager};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
@@ -83,10 +83,10 @@ impl Executor for SeqScanExecutor {
             let tuple = self.tuples[self.cursor].clone();
             self.cursor += 1;
 
-            if let Some(tm) = &self.txn_manager {
-                if !tm.is_visible(tuple.xmin, tuple.xmax, self.current_txn) {
-                    continue; // Skip invisible tuples
-                }
+            if let Some(tm) = &self.txn_manager
+                && !tm.is_visible(tuple.xmin, tuple.xmax, self.current_txn)
+            {
+                continue; // Skip invisible tuples
             }
             return Some(tuple);
         }
@@ -137,7 +137,12 @@ pub struct NestedLoopJoinExecutor<Left: Executor, Right: Executor> {
 }
 
 impl<Left: Executor, Right: Executor> NestedLoopJoinExecutor<Left, Right> {
-    pub fn new(left: Box<Left>, right: Box<Right>, predicate: fn(&Tuple, &Tuple) -> bool, schema: Schema) -> Self {
+    pub fn new(
+        left: Box<Left>,
+        right: Box<Right>,
+        predicate: fn(&Tuple, &Tuple) -> bool,
+        schema: Schema,
+    ) -> Self {
         Self {
             left,
             right,
@@ -171,9 +176,7 @@ impl<Left: Executor, Right: Executor> Executor for NestedLoopJoinExecutor<Left, 
             } else {
                 // Right table exhausted for current left_tuple. Advance left.
                 self.left_tuple = self.left.next();
-                if self.left_tuple.is_none() {
-                    return None;
-                }
+                self.left_tuple.as_ref()?;
                 // Reset right table
                 self.right.init();
             }
@@ -193,9 +196,12 @@ mod tests {
     #[test]
     fn seq_scan_should_return_all_tuples() {
         let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
-        let tuples = vec![Tuple::new(1, vec![Value::Integer(1)]), Tuple::new(1, vec![Value::Integer(5)])];
+        let tuples = vec![
+            Tuple::new(1, vec![Value::Integer(1)]),
+            Tuple::new(1, vec![Value::Integer(5)]),
+        ];
         let mut scan = SeqScanExecutor::new(schema, tuples);
-        
+
         scan.init();
         assert_eq!(scan.next().unwrap().values[0], Value::Integer(1));
         assert_eq!(scan.next().unwrap().values[0], Value::Integer(5));
@@ -205,9 +211,12 @@ mod tests {
     #[test]
     fn filter_should_drop_unmatched_tuples() {
         let schema = Schema::new(vec![Column::new(String::from("id"), TypeId::Integer, 4)]);
-        let tuples = vec![Tuple::new(1, vec![Value::Integer(1)]), Tuple::new(1, vec![Value::Integer(10)])];
+        let tuples = vec![
+            Tuple::new(1, vec![Value::Integer(1)]),
+            Tuple::new(1, vec![Value::Integer(10)]),
+        ];
         let scan = SeqScanExecutor::new(schema, tuples);
-        
+
         let mut filter = FilterExecutor::new(Box::new(scan), |t| {
             if let Value::Integer(id) = t.values[0] {
                 id > 5

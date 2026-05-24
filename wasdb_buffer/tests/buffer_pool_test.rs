@@ -12,8 +12,14 @@ fn fetch_and_unpin_should_work_with_lru() {
     let disk_manager = BasicDiskManager::<PAGE_SIZE>::new(&path).unwrap();
     let replacer = Box::new(LRUReplacer::new(10));
     let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
-    let page_id_0 = PageId { file_id: 0, page_num: 0 };
-    let page_id_1 = PageId { file_id: 0, page_num: 1 };
+    let page_id_0 = PageId {
+        file_id: 0,
+        page_num: 0,
+    };
+    let page_id_1 = PageId {
+        file_id: 0,
+        page_num: 1,
+    };
 
     let frame_0 = buffer_pool.fetch_page(page_id_0).unwrap();
     {
@@ -36,7 +42,10 @@ fn fetch_and_unpin_should_work_with_clock() {
     let disk_manager = BasicDiskManager::<PAGE_SIZE>::new(&path).unwrap();
     let replacer = Box::new(ClockReplacer::new(10));
     let buffer_pool = BufferPoolManager::new(10, disk_manager, replacer);
-    let page_id_0 = PageId { file_id: 0, page_num: 0 };
+    let page_id_0 = PageId {
+        file_id: 0,
+        page_num: 0,
+    };
 
     let _frame_0 = buffer_pool.fetch_page(page_id_0).unwrap();
     let result = buffer_pool.unpin_page(page_id_0, true);
@@ -51,12 +60,15 @@ fn fetch_should_track_hit_rate() {
     let replacer = Box::new(LRUReplacer::new(2));
     let pool = BufferPoolManager::new(2, disk_manager, replacer);
 
-    let page_id_0 = PageId { file_id: 1, page_num: 0 };
-    
+    let page_id_0 = PageId {
+        file_id: 1,
+        page_num: 0,
+    };
+
     // Fetch once - Miss
     pool.fetch_page(page_id_0).unwrap();
     pool.unpin_page(page_id_0, false).unwrap();
-    
+
     assert_eq!(pool.get_hits(), 0);
     assert_eq!(pool.get_misses(), 1);
     assert_eq!(pool.get_hit_rate(), 0.0);

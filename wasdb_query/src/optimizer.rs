@@ -1,12 +1,23 @@
-use crate::executors::{Executor, SeqScanExecutor, NestedLoopJoinExecutor, FilterExecutor, Tuple};
-use wasdb_catalog::schema::Schema;
+use crate::executors::Tuple;
 use wasdb_catalog::Catalog;
 
 pub enum LogicalPlan {
-    SeqScan { table_name: String },
-    IndexScan { table_name: String, key: i32 },
-    NestedLoopJoin { left: Box<LogicalPlan>, right: Box<LogicalPlan>, predicate: fn(&Tuple, &Tuple) -> bool },
-    Filter { child: Box<LogicalPlan>, predicate: fn(&Tuple) -> bool },
+    SeqScan {
+        table_name: String,
+    },
+    IndexScan {
+        table_name: String,
+        key: i32,
+    },
+    NestedLoopJoin {
+        left: Box<LogicalPlan>,
+        right: Box<LogicalPlan>,
+        predicate: fn(&Tuple, &Tuple) -> bool,
+    },
+    Filter {
+        child: Box<LogicalPlan>,
+        predicate: fn(&Tuple) -> bool,
+    },
 }
 
 pub struct Optimizer<'a> {
@@ -23,12 +34,18 @@ impl<'a> Optimizer<'a> {
     pub fn optimize(&self, plan: LogicalPlan) -> Result<String, String> {
         match plan {
             LogicalPlan::SeqScan { table_name } => {
-                let table_meta = self.catalog.get_table(&table_name).map_err(|e| format!("{:?}", e))?;
+                let table_meta = self
+                    .catalog
+                    .get_table(&table_name)
+                    .map_err(|e| format!("{:?}", e))?;
                 // If it has an index, maybe choose IndexScan instead if there's a filter (not possible to know here without filter conditions)
                 Ok(format!("SeqScan on {}", table_meta.table_name))
             }
             LogicalPlan::IndexScan { table_name, key } => {
-                let table_meta = self.catalog.get_table(&table_name).map_err(|e| format!("{:?}", e))?;
+                let table_meta = self
+                    .catalog
+                    .get_table(&table_name)
+                    .map_err(|e| format!("{:?}", e))?;
                 if table_meta.indexes.is_empty() {
                     return Err(format!("No index found on {}", table_name));
                 }

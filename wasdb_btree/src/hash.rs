@@ -1,11 +1,17 @@
 use crate::traits::Index;
-use wasdb_storage::CTID;
-use std::collections::HashMap;
 use parking_lot::RwLock;
+use std::collections::HashMap;
+use wasdb_storage::CTID;
 
 /// A basic in-memory hash index for demonstration purposes
 pub struct HashIndex {
     map: RwLock<HashMap<i32, CTID>>,
+}
+
+impl Default for HashIndex {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HashIndex {
@@ -31,7 +37,11 @@ impl Index for HashIndex {
         map.get(&key).copied().ok_or("Key not found".into())
     }
 
-    fn range_search(&self, _start_key: i32, _end_key: i32) -> Result<Vec<CTID>, Box<dyn std::error::Error>> {
+    fn range_search(
+        &self,
+        _start_key: i32,
+        _end_key: i32,
+    ) -> Result<Vec<CTID>, Box<dyn std::error::Error>> {
         Err("Hash indexes do not support range search efficiently".into())
     }
 

@@ -164,8 +164,14 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> BTreeIndex<'a, PAGE_
     }
 }
 
-impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index for BTreeIndex<'a, PAGE_SIZE, D> {
-    fn insert(&self, key: i32, ctid: wasdb_storage::CTID) -> Result<(), Box<dyn std::error::Error>> {
+impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
+    for BTreeIndex<'a, PAGE_SIZE, D>
+{
+    fn insert(
+        &self,
+        key: i32,
+        ctid: wasdb_storage::CTID,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         self.insert(key, ctid).map_err(|e| e.into())
     }
 
@@ -173,10 +179,17 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
         self.search(key).map_err(|e| e.into())
     }
 
-    fn range_search(&self, start_key: i32, end_key: i32) -> Result<Vec<wasdb_storage::CTID>, Box<dyn std::error::Error>> {
+    fn range_search(
+        &self,
+        start_key: i32,
+        end_key: i32,
+    ) -> Result<Vec<wasdb_storage::CTID>, Box<dyn std::error::Error>> {
         let mut results = Vec::new();
-        
-        let mut curr_page_id = match self.find_leaf_page(start_key).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)? {
+
+        let mut curr_page_id = match self
+            .find_leaf_page(start_key)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
+        {
             Some((_frame_id, pid)) => pid,
             None => return Ok(results),
         };
@@ -212,7 +225,8 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
     }
 
     fn delete(&self, key: i32) -> Result<(), Box<dyn std::error::Error>> {
-        let (leaf_frame, leaf_page_id) = self.find_leaf_page(key)
+        let (leaf_frame, leaf_page_id) = self
+            .find_leaf_page(key)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?
             .ok_or_else(|| Box::new(BTreeError::KeyNotFound) as Box<dyn std::error::Error>)?;
 
@@ -235,15 +249,17 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
                 leaf.values[i] = leaf.values[i + 1];
             }
             leaf.header.num_keys -= 1;
-            
+
             // Complex Deletion check (Merging/Redistribution)
             let min_keys = leaf.header.max_keys / 2;
-            if leaf.header.num_keys < min_keys && leaf.header.parent_page_id != crate::node::INVALID_PAGE_ID {
+            if leaf.header.num_keys < min_keys
+                && leaf.header.parent_page_id != crate::node::INVALID_PAGE_ID
+            {
                 // For Nivel 4: Trigger merging/redistribution
-                // (In a full implementation, we would fetch the sibling, check its count, 
+                // (In a full implementation, we would fetch the sibling, check its count,
                 // and either borrow a key or merge the pages entirely, updating the parent).
-                // To avoid a 500-line safe/unsafe Rust nightmare in this snippet, 
-                // we leave the underflow handled as a no-op that just returns ok, 
+                // To avoid a 500-line safe/unsafe Rust nightmare in this snippet,
+                // we leave the underflow handled as a no-op that just returns ok,
                 // but the academic logic check is present.
             }
 
@@ -262,8 +278,8 @@ impl<'a, const PAGE_SIZE: usize, D: DiskManager<PAGE_SIZE>> crate::traits::Index
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
-    use wasdb_storage::BasicDiskManager;
     use wasdb_buffer::lru::LRUReplacer;
+    use wasdb_storage::BasicDiskManager;
 
     const TEST_PAGE_SIZE: usize = 8192;
 
@@ -273,7 +289,7 @@ mod tests {
         let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
         let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
         let btree = BTreeIndex::new(&buffer, None);
-        
+
         let ctid = wasdb_storage::CTID::default();
         assert!(btree.insert(1, ctid).is_ok());
     }
@@ -284,9 +300,11 @@ mod tests {
         let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
         let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
         let btree = BTreeIndex::new(&buffer, None);
-        
-        let mut ctid = wasdb_storage::CTID::default();
-        ctid.slot_idx = 100;
+
+        let ctid = wasdb_storage::CTID {
+            slot_idx: 100,
+            ..Default::default()
+        };
         btree.insert(1, ctid).unwrap();
         assert_eq!(btree.search(1).unwrap(), ctid);
     }
@@ -297,10 +315,13 @@ mod tests {
         let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
         let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
         let btree = BTreeIndex::new(&buffer, None);
-        
+
         let ctid = wasdb_storage::CTID::default();
         btree.insert(2, ctid).unwrap();
-        assert!(matches!(btree.insert(2, ctid), Err(BTreeError::DuplicateKey)));
+        assert!(matches!(
+            btree.insert(2, ctid),
+            Err(BTreeError::DuplicateKey)
+        ));
     }
 
     #[test]
@@ -309,7 +330,7 @@ mod tests {
         let disk = BasicDiskManager::<TEST_PAGE_SIZE>::new(temp_file.path()).unwrap();
         let buffer = BufferPoolManager::new(10, disk, Box::new(LRUReplacer::new(10)));
         let btree = BTreeIndex::new(&buffer, None);
-        
+
         assert!(matches!(btree.search(99), Err(BTreeError::KeyNotFound)));
     }
 }

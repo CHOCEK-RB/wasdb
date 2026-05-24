@@ -90,7 +90,12 @@ impl TransactionManager {
 
     /// Determines if a tuple with the given xmin/xmax is visible to the current transaction.
     /// Basic MVCC Snapshot Isolation Logic.
-    pub fn is_visible(&self, xmin: TransactionId, xmax: TransactionId, current_txn: TransactionId) -> bool {
+    pub fn is_visible(
+        &self,
+        xmin: TransactionId,
+        xmax: TransactionId,
+        current_txn: TransactionId,
+    ) -> bool {
         // A tuple is NOT visible if the creator (xmin) hasn't committed
         // and is not the current transaction.
         if xmin != current_txn && self.get_state(xmin) != TransactionState::Committed {
@@ -99,10 +104,10 @@ impl TransactionManager {
 
         // A tuple is NOT visible if it has been deleted (xmax valid),
         // and the deleter has committed, or the deleter IS the current transaction.
-        if xmax != INVALID_TXN_ID {
-            if xmax == current_txn || self.get_state(xmax) == TransactionState::Committed {
-                return false;
-            }
+        if xmax != INVALID_TXN_ID
+            && (xmax == current_txn || self.get_state(xmax) == TransactionState::Committed)
+        {
+            return false;
         }
 
         true
@@ -117,7 +122,7 @@ mod tests {
     fn begin_should_assign_monotonically_increasing_xids() {
         // Arrange
         let tm = TransactionManager::new();
-        
+
         // Act
         let t1 = tm.begin();
         let t2 = tm.begin();
@@ -177,7 +182,7 @@ mod tests {
         let t_creator = tm.begin();
         let t_deleter = tm.begin();
         let t_reader = tm.begin();
-        
+
         tm.commit(t_creator).unwrap();
         tm.commit(t_deleter).unwrap();
 
